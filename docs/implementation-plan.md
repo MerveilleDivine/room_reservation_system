@@ -16,17 +16,16 @@ Implemented in this iteration:
 
 ## Verification gate
 
-The foundation already passed 38 backend and 14 frontend tests. The current frontend passes its production build, strict TypeScript checks, all 17 unit tests and formatting locally. The expanded backend and browser suites run in GitHub Actions. Record actual results in verification.md before marking the current milestone validated.
+The current implementation passes 57 backend tests, 17 frontend unit tests and all six Chromium scenarios in GitHub Actions. Strict TypeScript, production build and formatting checks pass. Desktop, mobile, dialog and usage screenshots have been inspected. See verification.md for the source commit and run evidence.
 
 A browser test failure is handled at the failing boundary: inspect its request, response and trace, fix the cause, then rerun the affected check. The real browser suite does not intercept or mock API calls.
 
 ## Next work after this gate passes
 
-1. Inspect the desktop, mobile, booking-dialog and usage screenshots from the browser artifact.
-2. Verify setup from a fresh Windows checkout with the README commands.
-3. Add the optional calendar/timeline only if it improves browsing reservations.
-4. Add optional PDF export using the existing backend usage calculation service.
-5. Decide an explicit office timezone and daylight-saving ambiguity policy if this expands beyond the current browser-local demo.
+1. Verify setup from a fresh Windows checkout with the README commands.
+2. Add the optional calendar/timeline only if it improves browsing reservations.
+3. Add optional PDF export using the existing backend usage calculation service.
+4. Decide an explicit office timezone and daylight-saving ambiguity policy if this expands beyond the current browser-local demo.
 
 ## Deliberate scope
 

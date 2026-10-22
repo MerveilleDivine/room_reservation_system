@@ -67,7 +67,7 @@ npm run test:e2e
 
 Playwright starts both servers with fresh in-memory data. The suite covers create/reload/edit/cancel, server-side conflicts, check-in/early completion, usage filtering, mobile layout, keyboard focus and simultaneous HTTP booking requests. Its config uses Europe/Vilnius for browser-local date entry.
 
-See [verification.md](docs/verification.md) for the actual execution record. Written tests and source review are not equivalent to passing backend or end-to-end tests.
+The current implementation passes 57 backend tests, 17 frontend unit tests and six real Chromium scenarios. See [verification.md](docs/verification.md) for the tested source commit, CI run and remaining environment check.
 
 ## Current scope
 
