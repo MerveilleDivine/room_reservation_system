@@ -6,6 +6,7 @@ Local base URL: `http://localhost:5080/api`. JSON property names are camelCase. 
 | ------ | ----------------------------- | ---------------------------------------------------------------- |
 | GET    | `/health`                     | Local health check                                               |
 | GET    | `/booking-policy`             | Configured maximum duration/advance days                         |
+| GET    | `/usage`                      | Room usage; optional `from` + `to`, and `roomId`                 |
 | GET    | `/rooms`                      | Filters: `minimumCapacity`, `floor`, comma-separated `equipment` |
 | GET    | `/users`                      | User details and API-calculated active count                     |
 | GET    | `/reservations`               | Filters: `roomId`, `organizerId`, `status`, `from`, `to`         |
@@ -71,3 +72,5 @@ Example conflict (HTTP 409):
 | `UNEXPECTED_ERROR`                                | Unexpected server failure; internal details are not exposed |
 
 The frontend additionally uses `API_UNAVAILABLE` for network failure and `REQUEST_FAILED` if the server does not return the expected error contract.
+
+Usage errors are `INVALID_REPORT_RANGE` for missing/reversed endpoints, `REPORT_RANGE_EXCEEDED` for a range over 366 days, and `ROOM_NOT_FOUND` for an unknown room. Omitting both endpoints selects the last seven elapsed days. See [usage-report.md](usage-report.md) for the returned fields and exact metric definitions.

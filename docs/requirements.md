@@ -23,7 +23,7 @@ Source: the supplied internship room-reservation assignment. This document parap
 | Configuration | Duration and advance limits come from appsettings                                                  | Options binding/startup validation and configurable-policy test                         |
 | Technology    | ASP.NET backend, EF Core InMemory, React frontend, no authentication                               | Required stack retained                                                                 |
 
-Implementation is source-level progress until the .NET and full-stack gates in `verification.md` have passed.
+Usage reporting is implemented in `GET /api/usage` and the Usage page. The [metric definitions](usage-report.md) distinguish scheduled, observed and unconfirmed time. See `verification.md` for executed test evidence rather than treating the acceptance matrix as a test result.
 
 ## Explicit assumptions
 
@@ -41,9 +41,9 @@ Implementation is source-level progress until the .NET and full-stack gates in `
 12. **Availability:** an active room is eligible to book, not necessarily free now. The first milestone validates availability when a complete booking is submitted; it does not pretend that an active flag proves availability for every time slot.
 13. **No room/user CRUD:** seed data and browsing are included. The brief does not ask for room/user administration.
 
-## Still unresolved before reporting
+## Reporting decisions and follow-up
 
-- Agree whether manual check-in is the intended usage source or just an acceptable demonstration.
+- Manual check-in is the explicit observation source for this implementation. A sensor or attendance-feed integration would require a new requirement.
 - Choose a business timezone if reporting by office-local calendar day becomes required. Browser-local entry is adequate for the current local demo but ambiguous daylight-saving times need an explicit product policy before multi-office scheduling.
-- Define reporting hours and denominator before calling anything a utilization percentage.
-- Decide whether a long-running, unchecked-in meeting is “unknown” forever or can be manually confirmed afterward. No guessing is built into the current model.
+- The report's percentage is confirmed share of elapsed reserved time. Office-hours utilization is not defined.
+- Ended meetings without check-in remain unconfirmed. Retrospective confirmation is not part of the current workflow.

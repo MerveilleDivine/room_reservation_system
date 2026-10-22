@@ -27,6 +27,7 @@ export function BookingDialog({
   onClose,
 }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const titleInput = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<Error | null>(null);
   const [saving, setSaving] = useState(false);
   const [defaultStart] = useState(() => {
@@ -38,6 +39,7 @@ export function BookingDialog({
   useEffect(() => {
     const element = dialog.current;
     element?.showModal();
+    titleInput.current?.focus();
     return () => element?.close();
   }, []);
 
@@ -108,6 +110,7 @@ export function BookingDialog({
         <label>
           Meeting title
           <input
+            ref={titleInput}
             name="title"
             autoFocus
             required

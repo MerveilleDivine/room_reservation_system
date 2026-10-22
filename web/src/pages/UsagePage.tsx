@@ -19,7 +19,11 @@ export function UsagePage({
     return { from: toLocalInput(start), to: toLocalInput(end) };
   });
   const [roomId, setRoomId] = useState('');
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(
+    () =>
+      '?' +
+      new URLSearchParams({ from: toUtc(dates.from), to: toUtc(dates.to) }),
+  );
   const [reportRevision, setReportRevision] = useState(0);
   const report = useApi<UsageReport>(
     '/usage' + query,

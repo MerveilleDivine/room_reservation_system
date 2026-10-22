@@ -946,11 +946,13 @@ progress::-moz-progress-bar {
     gap: 15px;
   }
   .equipment-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px;
   }
   .check-chip {
     flex: 1;
-    justify-content: center;
+    justify-content: flex-start;
   }
   .room-grid {
     gap: 14px;

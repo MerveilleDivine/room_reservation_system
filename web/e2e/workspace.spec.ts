@@ -22,9 +22,12 @@ function booking(days: number, roomId = atlas, organizerId = alex) {
 
 async function fillBooking(page: Page, value: ReturnType<typeof booking>) {
   await page.getByLabel('Meeting title').fill(value.title);
-  await page.getByLabel('Room', { exact: true }).selectOption(value.roomId);
   await page
-    .getByLabel('Organizer', { exact: true })
+    .getByRole('dialog')
+    .getByRole('combobox', { name: 'Room', exact: true })
+    .selectOption(value.roomId);
+  await page
+    .getByRole('combobox', { name: 'Organizer', exact: true })
     .selectOption(value.organizerId);
   const local = await page.evaluate(
     ({ start, end }) => {
@@ -228,7 +231,9 @@ test('usage report renders backend totals and filters a room', async ({
     path: info.outputPath('usage-desktop.png'),
     fullPage: true,
   });
-  await page.getByLabel('Room', { exact: true }).selectOption(atlas);
+  await page
+    .getByRole('combobox', { name: 'Room', exact: true })
+    .selectOption(atlas);
   await page.getByRole('button', { name: 'Update report' }).click();
   await expect(table.getByRole('row')).toHaveCount(2);
   await expect(

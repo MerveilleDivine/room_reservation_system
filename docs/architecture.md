@@ -49,7 +49,7 @@ Reference: [Microsoft EF Core InMemory guidance](https://learn.microsoft.com/en-
 - Early completion releases the room immediately while retaining its original scheduled end.
 - Missing check-in is unconfirmed use, not a no-show classification.
 
-A future report must label planned, observed and unknown data separately. Do not calculate impressive-looking utilization figures from bookings alone.
+The usage report labels scheduled, observed and unconfirmed minutes separately. Its interval-union calculations run in the backend and avoid double-counting an early-released slot that was booked again. The report snapshot uses the booking gate and one injected clock reading. See [usage-report.md](usage-report.md).
 
 ## ADR 5: modest frontend state
 
@@ -64,3 +64,13 @@ A future report must label planned, observed and unknown data separately. Do not
 Business failures carry a stable code and human message using Problem Details. Missing resources are 404, scheduling/lifecycle conflicts are 409, and invalid values are 400. Malformed bound requests are also routed through the handler. The frontend displays the server's message, keeps the form open, and preserves input.
 
 Unexpected server errors must not expose exception internals. Normal server logging remains enabled. The API is bound to loopback for development and has no authentication by explicit assignment scope. Do not deploy it publicly as-is.
+
+## ADR 7: minimal interface
+
+The visual direction follows the requested Apple-inspired restraint: system sans-serif typography, white and soft gray surfaces, thin separators and blue for primary actions. Page titles describe the task. Room cards prioritize capacity, equipment and booking; decorative floor-plan illustrations and promotional headlines were removed. Inline SVG icons use a consistent stroke. The modal closes before unmounting so the native dialog can restore focus to its trigger. Reduced-motion settings and a keyboard skip link are supported.
+
+## ADR 8: run the browser against the actual stack
+
+Playwright starts a fresh ASP.NET process and the React development server, then drives Chromium through the Vite proxy to EF Core InMemory. Tests run sequentially against deterministic seed scenarios, use distinct future booking windows, and cancel created future reservations. The browser uses Europe/Vilnius, while requests carry UTC instants. Screenshots and failure traces are stored in the CI artifact. Frontend component tests remain separate and explicitly mock their API boundary.
+
+References: [Playwright webServer](https://playwright.dev/docs/test-webserver) and [GitHub CI setup](https://playwright.dev/docs/ci-intro).

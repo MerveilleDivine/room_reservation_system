@@ -2,7 +2,7 @@
 
 A meeting-room reservation app built with ASP.NET Core, Entity Framework Core InMemory, React and TypeScript.
 
-This is the first implementation milestone, not a finished submission. It follows the supplied room-reservation technical brief. The original assignment PDF is intentionally not redistributed in this repository.
+The implementation follows the supplied room-reservation technical brief. It includes the required booking flow, a room usage report, and a minimal interface. Calendar/timeline and PDF export remain optional follow-up work. The original assignment PDF is kept outside this repository.
 
 ## Start in VS Code
 
@@ -25,7 +25,7 @@ npm ci
 npm run dev
 ```
 
-Open http://127.0.0.1:5173. The frontend forwards `/api` requests to http://localhost:5080. A health check is available at http://localhost:5080/api/health. No secrets, database server, accounts or environment files are needed.
+Open http://127.0.0.1:5173. The frontend forwards `/api` requests to http://127.0.0.1:5080. A health check is available at http://localhost:5080/api/health. No secrets, database server, accounts or environment files are needed.
 
 If `dotnet` is not recognized after installation, restart the VS Code terminal. If the site reports that it cannot reach the API, check that terminal 1 is still running. The UI deliberately does not substitute fake data for a failed API connection.
 
@@ -37,7 +37,8 @@ VS Code's **Terminal → Run Task** menu also includes API, web and test command
 2. Book Atlas with an organizer and a future time. Times are entered in your device's local timezone and sent to the API as UTC instants.
 3. On Reservations, edit or cancel a future booking. Try creating a second overlapping booking to see a readable backend error.
 4. Find the seeded **Engineering sync**, which starts 15 minutes before API startup. Check in and end it early to exercise observed-use timestamps and room release.
-5. Open Users to see active reservation counts calculated by the API.
+5. Open People to see active reservation counts calculated by the API.
+6. Open Usage to compare scheduled, checked-in, unconfirmed and early-released time. The seeded past meetings give the report traceable examples.
 
 Seed dates are relative to server startup. Restarting the API resets all demo data. No authentication is included because the brief explicitly excludes it. This is a local demo, not an internet-ready multi-user deployment.
 
@@ -55,21 +56,32 @@ From `web`:
 npm run check
 ```
 
-`npm run check` runs strict TypeScript checking, a production build, the frontend tests, and formatting checks. `npm run test:watch` runs frontend tests while developing. A GitHub Actions workflow runs backend and frontend checks after the project is pushed.
+`npm run check` runs strict TypeScript checking, a production build, the frontend tests, and formatting checks. `npm run test:watch` runs frontend tests while developing. GitHub Actions also runs the real browser suite against ASP.NET and EF Core InMemory.
+
+To run the browser suite locally, install the SDK, close the two development servers so their ports are free, and run from `web`:
+
+```powershell
+npx playwright install chromium
+npm run test:e2e
+```
+
+Playwright starts both servers with fresh in-memory data. The suite covers create/reload/edit/cancel, server-side conflicts, check-in/early completion, usage filtering, mobile layout, keyboard focus and simultaneous HTTP booking requests. Its config uses Europe/Vilnius for browser-local date entry.
 
 See [verification.md](docs/verification.md) for the actual execution record. Written tests and source review are not equivalent to passing backend or end-to-end tests.
 
 ## Current scope
 
-| Area            | First milestone                                                                                           |
-| --------------- | --------------------------------------------------------------------------------------------------------- |
-| Rooms           | Seed data, active/inactive status, capacity/floor/multiple-equipment filters                              |
-| Users           | Seed data, unique IDs, backend-calculated active reservation counts                                       |
-| Reservations    | Create, edit, cancel, check in, end early, filter by room/organizer/status/date range                     |
-| Rules           | Seven specified rules, configurable duration/advance limits, stable error codes                           |
-| Reliability     | Injectable clock, single-process write gate, API error contract, unit/integration/concurrency test source |
-| UI              | Responsive pages, native modal, loading/empty/error states, UTC conversion                                |
-| Still to finish | Live browser/full-stack verification, usage aggregation/report, calendar/timeline, PDF export             |
+| Area               | First milestone                                                                                           |
+| ------------------ | --------------------------------------------------------------------------------------------------------- |
+| Rooms              | Seed data, active/inactive status, capacity/floor/multiple-equipment filters                              |
+| Users              | Seed data, unique IDs, backend-calculated active reservation counts                                       |
+| Reservations       | Create, edit, cancel, check in, end early, filter by room/organizer/status/date range                     |
+| Rules              | Seven specified rules, configurable duration/advance limits, stable error codes                           |
+| Reliability        | Injectable clock, single-process write gate, API error contract, unit/integration/concurrency test source |
+| UI                 | Responsive pages, native modal, loading/empty/error states, UTC conversion                                |
+| Usage              | Backend interval-union calculations, report filters, observed/unconfirmed distinction                     |
+| Browser coverage   | Real React → ASP.NET → EF flow, desktop/mobile and keyboard checks                                        |
+| Optional next work | Calendar/timeline, PDF export, explicit office timezone/DST policy                                        |
 
 ## Structure
 
@@ -118,3 +130,4 @@ Follow the two-terminal startup instructions above. The repository contains the 
 - [Implementation plan](docs/implementation-plan.md)
 - [API contract](docs/api.md)
 - [Verification record](docs/verification.md)
+- [Usage report definitions](docs/usage-report.md)
