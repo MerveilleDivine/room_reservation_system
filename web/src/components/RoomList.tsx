@@ -1,6 +1,7 @@
 import { equipmentLabels } from '../api/contracts';
 import type { Room } from '../api/contracts';
 import { EmptyState } from './Feedback';
+import { Icon } from './Icon';
 
 export function RoomList({
   rooms,
@@ -14,34 +15,26 @@ export function RoomList({
   if (rooms.length === 0)
     return (
       <EmptyState
-        title="No rooms match just yet."
+        title="No matching rooms"
         description="Try a different floor, capacity or equipment filter."
       />
     );
   return (
     <div className="room-grid">
-      {rooms.map((room, index) => (
-        <article className={`room-card room-tone-${index % 3}`} key={room.id}>
-          <div className="room-visual" aria-hidden="true">
-            <div className="room-plan">
-              <span />
-              <span />
-              <span />
-              <i />
-              <b />
-            </div>
-            <span className="room-number">{room.name.slice(0, 1)}</span>
-          </div>
+      {rooms.map((room) => (
+        <article className="room-card" key={room.id}>
           <div className="room-card-body">
             <div className="room-card-title">
-              <h3>{room.name}</h3>
+              <div>
+                <p className="room-location">Floor {room.floor}</p>
+                <h3>{room.name}</h3>
+              </div>
               <span className={`pill ${room.isActive ? 'active' : 'inactive'}`}>
                 {room.isActive ? 'Active' : 'Inactive'}
               </span>
             </div>
             <p className="muted">
-              Up to {room.capacity} people <span className="dot">·</span> Floor{' '}
-              {room.floor}
+              <Icon name="users" size={16} /> Up to {room.capacity} people
             </p>
             <div className="equipment-tags">
               {room.equipment.map((item) => (
@@ -54,7 +47,7 @@ export function RoomList({
               disabled={!room.isActive || !bookingEnabled}
             >
               {room.isActive ? 'Book this room' : 'Not accepting bookings'}
-              <span aria-hidden="true">↗</span>
+              {room.isActive ? <Icon name="arrow" size={16} /> : null}
             </button>
           </div>
         </article>

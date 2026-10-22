@@ -60,7 +60,7 @@ describe('workspace', () => {
     expect(
       screen.queryByRole('button', { name: 'Check in' }),
     ).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Users' }));
+    await user.click(screen.getByRole('button', { name: 'People' }));
     expect(
       await screen.findByRole('heading', { name: 'Alex Morgan' }),
     ).toBeInTheDocument();

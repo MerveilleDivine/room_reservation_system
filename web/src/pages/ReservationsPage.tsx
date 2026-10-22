@@ -42,8 +42,7 @@ export function ReservationsPage({
   return (
     <section aria-labelledby="reservations-heading">
       <div className="section-heading">
-        <h2 id="reservations-heading">Your meeting plans</h2>
-        <span>Schedule with a little breathing room</span>
+        <h2 id="reservations-heading">Meeting schedule</h2>
       </div>
       <div className="filters reservation-filters">
         <label>

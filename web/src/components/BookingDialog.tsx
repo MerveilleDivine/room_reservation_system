@@ -7,6 +7,7 @@ import type {
   Room,
 } from '../api/contracts';
 import { toLocalInput, toUtc } from '../lib/dates';
+import { Icon } from './Icon';
 
 interface Props {
   rooms: Room[];
@@ -39,6 +40,11 @@ export function BookingDialog({
     element?.showModal();
     return () => element?.close();
   }, []);
+
+  function dismiss() {
+    dialog.current?.close();
+    onClose();
+  }
 
   async function submit(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,23 +81,23 @@ export function BookingDialog({
       aria-labelledby="booking-heading"
       onCancel={(event) => {
         event.preventDefault();
-        if (!saving) onClose();
+        if (!saving) dismiss();
       }}
     >
       <div className="dialog-heading">
         <div>
-          <p className="eyebrow">MAKE SPACE</p>
+          <p className="eyebrow">Reservation</p>
           <h2 id="booking-heading">
-            {initial ? 'Edit reservation' : 'A room for your next idea.'}
+            {initial ? 'Edit reservation' : 'New reservation'}
           </h2>
         </div>
         <button
           className="icon-button"
           aria-label="Close reservation form"
-          onClick={onClose}
+          onClick={dismiss}
           disabled={saving}
         >
-          ×
+          <Icon name="close" />
         </button>
       </div>
       <form
@@ -186,8 +192,8 @@ export function BookingDialog({
           />
         </label>
         <p className="form-note">
-          Times use your device’s timezone. The server checks room capacity,
-          conflicts and booking limits before saving.
+          Times use your device’s timezone. Capacity and scheduling conflicts
+          are checked when you save.
         </p>
         {error ? (
           <div className="notice error" role="alert">
@@ -199,7 +205,7 @@ export function BookingDialog({
           <button
             type="button"
             className="button secondary"
-            onClick={onClose}
+            onClick={dismiss}
             disabled={saving}
           >
             Go back

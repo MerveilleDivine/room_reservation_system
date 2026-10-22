@@ -17,6 +17,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<BookingWriteGate>();
 builder.Services.AddScoped<BookingRules>();
 builder.Services.AddScoped<ReservationService>();
+builder.Services.AddScoped<UsageReportService>();
 
 var app = builder.Build();
 app.UseExceptionHandler();

@@ -36,8 +36,7 @@ export function RoomsPage({
   return (
     <section aria-labelledby="rooms-heading">
       <div className="section-heading">
-        <h2 id="rooms-heading">Find your space</h2>
-        <span>Built for being together</span>
+        <h2 id="rooms-heading">All rooms</h2>
       </div>
       <div className="filters room-filters">
         <label>

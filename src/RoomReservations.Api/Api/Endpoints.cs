@@ -13,6 +13,10 @@ public static class Endpoints
         app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
         app.MapGet("/api/booking-policy", (IOptions<BookingOptions> options) =>
             new BookingPolicyDto(options.Value.MaximumDurationDays, options.Value.MaximumAdvanceDays));
+        app.MapGet("/api/usage", async (
+            DateTimeOffset? from, DateTimeOffset? to, Guid? roomId,
+            UsageReportService service, CancellationToken cancellationToken) =>
+            await service.ReadAsync(from, to, roomId, cancellationToken));
 
         app.MapGet("/api/rooms", async (
             int? minimumCapacity, string? floor, string? equipment,

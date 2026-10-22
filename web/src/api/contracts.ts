@@ -48,6 +48,30 @@ export interface BookingPolicy {
   maximumAdvanceDays: number;
 }
 
+export interface RoomUsage {
+  roomId: string;
+  roomName: string;
+  floor: string;
+  isActive: boolean;
+  reservationCount: number;
+  scheduledMinutes: number;
+  elapsedReservedMinutes: number;
+  observedMinutes: number;
+  unconfirmedMinutes: number;
+  releasedMinutes: number;
+  unconfirmedCompletedCount: number;
+  confirmedSharePercent: number | null;
+}
+
+export interface UsageReport {
+  fromUtc: string;
+  toUtc: string;
+  asOfUtc: string;
+  measurementSource: string;
+  observationNote: string;
+  rooms: RoomUsage[];
+}
+
 export const equipmentLabels: Record<Equipment, string> = {
   projector: 'Projector',
   tv: 'TV screen',

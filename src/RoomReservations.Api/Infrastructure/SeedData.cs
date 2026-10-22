@@ -25,10 +25,16 @@ public static class SeedData
 
         var now = clock.GetUtcNow();
         var tomorrow = new DateTimeOffset(now.UtcDateTime.Date.AddDays(1).AddHours(9), TimeSpan.Zero);
+        var yesterday = tomorrow.AddDays(-2);
         db.Reservations.AddRange(
             new Reservation { Id = Guid.NewGuid(), RoomId = rooms[0].Id, OrganizerId = people[0].Id, Title = "Product planning", StartUtc = tomorrow, EndUtc = tomorrow.AddHours(1), Attendees = 8 },
             new Reservation { Id = Guid.NewGuid(), RoomId = rooms[1].Id, OrganizerId = people[1].Id, Title = "Design review", StartUtc = tomorrow.AddHours(2), EndUtc = tomorrow.AddHours(3), Attendees = 4 },
-            new Reservation { Id = Guid.NewGuid(), RoomId = rooms[2].Id, OrganizerId = people[2].Id, Title = "Engineering sync", StartUtc = now.AddMinutes(-15), EndUtc = now.AddMinutes(45), Attendees = 3 }
+            new Reservation { Id = Guid.NewGuid(), RoomId = rooms[2].Id, OrganizerId = people[2].Id, Title = "Engineering sync", StartUtc = now.AddMinutes(-15), EndUtc = now.AddMinutes(45), Attendees = 3 },
+            new Reservation { Id = Guid.NewGuid(), RoomId = rooms[0].Id, OrganizerId = people[0].Id, Title = "Roadmap review", StartUtc = yesterday, EndUtc = yesterday.AddHours(1), Attendees = 8, Status = ReservationStatus.Completed, CheckedInAtUtc = yesterday.AddMinutes(5), ActualEndUtc = yesterday.AddMinutes(40) },
+            new Reservation { Id = Guid.NewGuid(), RoomId = rooms[1].Id, OrganizerId = people[1].Id, Title = "Team catch-up", StartUtc = yesterday.AddHours(2), EndUtc = yesterday.AddHours(3), Attendees = 4, Status = ReservationStatus.Completed },
+            new Reservation { Id = Guid.NewGuid(), RoomId = rooms[2].Id, OrganizerId = people[2].Id, Title = "Planning workshop", StartUtc = yesterday.AddHours(5), EndUtc = yesterday.AddHours(6), Attendees = 3, Status = ReservationStatus.Completed, CheckedInAtUtc = yesterday.AddHours(5), ActualEndUtc = yesterday.AddHours(5).AddMinutes(30) },
+            new Reservation { Id = Guid.NewGuid(), RoomId = rooms[0].Id, OrganizerId = people[0].Id, Title = "Weekly planning", StartUtc = yesterday.AddDays(-1), EndUtc = yesterday.AddDays(-1).AddHours(1), Attendees = 6, Status = ReservationStatus.Completed, CheckedInAtUtc = yesterday.AddDays(-1).AddMinutes(2) },
+            new Reservation { Id = Guid.NewGuid(), RoomId = rooms[1].Id, OrganizerId = people[1].Id, Title = "Cancelled briefing", StartUtc = yesterday.AddDays(-1).AddHours(2), EndUtc = yesterday.AddDays(-1).AddHours(3), Attendees = 2, Status = ReservationStatus.Cancelled }
         );
         await db.SaveChangesAsync();
     }

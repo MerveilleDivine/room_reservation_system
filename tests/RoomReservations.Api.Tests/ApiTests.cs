@@ -106,6 +106,54 @@ public sealed class ApiTests
 
     private sealed record Problem(string Code, string Detail);
 
+    [Fact]
+    public async Task Usage_report_returns_backend_calculated_observations()
+    {
+        await using var factory = new TestApplication();
+        using var client = factory.CreateClient();
+        var report = await client.GetFromJsonAsync<UsageReportDto>("/api/usage");
+        Assert.NotNull(report);
+        Assert.Equal(Now, report.AsOfUtc);
+        var atlas = Assert.Single(report.Rooms, room => room.RoomName == "Atlas");
+        Assert.Equal(2, atlas.ReservationCount);
+        Assert.Equal(120, atlas.ScheduledMinutes);
+        Assert.Equal(100, atlas.ElapsedReservedMinutes);
+        Assert.Equal(93, atlas.ObservedMinutes);
+        Assert.Equal(20, atlas.ReleasedMinutes);
+        var birch = Assert.Single(report.Rooms, room => room.RoomName == "Birch");
+        Assert.Equal(1, birch.UnconfirmedCompletedCount);
+        Assert.Equal(0, birch.ObservedMinutes);
+    }
+
+    [Fact]
+    public async Task Usage_report_can_filter_one_room()
+    {
+        await using var factory = new TestApplication();
+        using var client = factory.CreateClient();
+        var report = await client.GetFromJsonAsync<UsageReportDto>($"/api/usage?roomId={RoomId}");
+        Assert.Equal(RoomId, Assert.Single(report!.Rooms).RoomId);
+    }
+
+    [Fact]
+    public async Task Partial_report_range_has_a_clear_error()
+    {
+        await using var factory = new TestApplication();
+        using var client = factory.CreateClient();
+        var response = await client.GetAsync("/api/usage?from=2026-10-20T00:00:00Z");
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("INVALID_REPORT_RANGE", (await response.Content.ReadFromJsonAsync<Problem>())!.Code);
+    }
+
+    [Fact]
+    public async Task Unknown_report_room_has_a_clear_error()
+    {
+        await using var factory = new TestApplication();
+        using var client = factory.CreateClient();
+        var response = await client.GetAsync($"/api/usage?roomId={Guid.NewGuid()}");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("ROOM_NOT_FOUND", (await response.Content.ReadFromJsonAsync<Problem>())!.Code);
+    }
+
     private sealed class TestApplication : WebApplicationFactory<Program>
     {
         private readonly string databaseName = Guid.NewGuid().ToString();

@@ -6,8 +6,7 @@ export function UsersPage({ people }: { people: ApiResource<Person[]> }) {
   return (
     <section aria-labelledby="users-heading">
       <div className="section-heading">
-        <h2 id="users-heading">Your organizers</h2>
-        <span>People, not just calendar slots</span>
+        <h2 id="users-heading">Organizers</h2>
       </div>
       {people.error ? (
         <ErrorNotice error={people.error} />
@@ -38,7 +37,7 @@ export function UsersPage({ people }: { people: ApiResource<Person[]> }) {
         </div>
       ) : (
         <EmptyState
-          title="No organizers yet."
+          title="No organizers"
           description="Seeded users will appear when the API is running."
         />
       )}

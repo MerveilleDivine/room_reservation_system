@@ -21,8 +21,8 @@ export function ReservationList({
   if (reservations.length === 0)
     return (
       <EmptyState
-        title="Space for something new."
-        description="No reservations match these filters. Create one or adjust your search."
+        title="No matching reservations"
+        description="Create a reservation or adjust the filters."
       />
     );
   return (
