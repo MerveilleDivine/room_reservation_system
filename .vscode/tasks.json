@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "API: run",
+      "type": "shell",
+      "command": "dotnet run --project src/RoomReservations.Api",
+      "problemMatcher": "$msCompile",
+      "isBackground": true
+    },
+    {
+      "label": "Web: install",
+      "type": "shell",
+      "command": "npm ci",
+      "options": { "cwd": "${workspaceFolder}/web" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Web: run",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": { "cwd": "${workspaceFolder}/web" },
+      "problemMatcher": [],
+      "isBackground": true
+    },
+    {
+      "label": "Backend: test",
+      "type": "shell",
+      "command": "dotnet test RoomReservations.slnx",
+      "problemMatcher": "$msCompile",
+      "group": "test"
+    },
+    {
+      "label": "Web: check",
+      "type": "shell",
+      "command": "npm run check",
+      "options": { "cwd": "${workspaceFolder}/web" },
+      "problemMatcher": [],
+      "group": "test"
+    }
+  ]
+}
