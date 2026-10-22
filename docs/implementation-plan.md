@@ -16,13 +16,13 @@ Source implemented:
 - Boundary, API, concurrency and frontend test source.
 - VS Code tasks, reproducible npm lockfile, CI workflow and engineering notes.
 
-**Gate:** frontend checks pass. Backend compilation/tests and a real browser → API → data round-trip are still required. Do not call this milestone fully validated until those gates pass.
+**Gate:** GitHub Actions passes the backend build and all 38 backend tests, plus the frontend build and 14 frontend tests. A real browser → API → data round-trip is still required before declaring the milestone fully validated.
 
 ## Milestone 2: prove the full stack
 
 This is the next task in VS Code:
 
-1. Restore and build with the .NET 10 SDK. Run `dotnet test RoomReservations.slnx`; fix compilation, package or assertion failures before adding features.
+1. Verify startup from a fresh Windows checkout with the .NET 10 SDK. Run `dotnet test RoomReservations.slnx` locally as a setup check; the same backend suite already passes in GitHub Actions.
 2. Run both servers. Exercise create → reload → edit → cancel; confirm database responses match rendered results.
 3. Prove each of R1–R7 through real API calls. Do not rely only on disabled frontend controls.
 4. Run two conflicting creates and check that exactly one succeeds. Run the organizer conflict across two different rooms.

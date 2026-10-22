@@ -69,7 +69,7 @@ See [verification.md](docs/verification.md) for the actual execution record. Wri
 | Rules           | Seven specified rules, configurable duration/advance limits, stable error codes                           |
 | Reliability     | Injectable clock, single-process write gate, API error contract, unit/integration/concurrency test source |
 | UI              | Responsive pages, native modal, loading/empty/error states, UTC conversion                                |
-| Still to finish | Execute .NET tests, live full-stack verification, usage aggregation/report, calendar/timeline, PDF export |
+| Still to finish | Live browser/full-stack verification, usage aggregation/report, calendar/timeline, PDF export             |
 
 ## Structure
 
