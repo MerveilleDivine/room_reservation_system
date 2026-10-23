@@ -57,8 +57,21 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - name: Start the browser service
+        timeout-minutes: 5
+        run: |
+          roomwise_playwright_version="$(node -p "require('./node_modules/@playwright/test/package.json').version")"
+          docker run --detach --interactive --rm --init --name roomwise-browser \
+            --shm-size=1g --network host --volume "$PWD:/work" --workdir /work \
+            "mcr.microsoft.com/playwright:v${roomwise_playwright_version}-noble" \
+            ./node_modules/.bin/playwright run-server --host 127.0.0.1 --port 3000
+          curl --fail --retry 20 --retry-connrefused --retry-all-errors --retry-delay 1 --max-time 5 http://127.0.0.1:3000/json
       - run: npm run test:e2e
+        env:
+          PW_TEST_CONNECT_WS_ENDPOINT: ws://127.0.0.1:3000/
+      - name: Browser service logs
+        if: ${{ failure() }}
+        run: docker logs roomwise-browser
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -85,20 +98,17 @@ jobs:
       - run: npm ci
         working-directory: web
       - name: Start the published app
-        run: |
-          docker network create roomwise-ci
-          docker run --detach --rm --name roomwise --network roomwise-ci \
-            --publish 127.0.0.1:8080:8080 \
-            --env 'AllowedHosts=localhost;127.0.0.1;roomwise' roomwise:ci
+        run: docker run --detach --rm --name roomwise --publish 127.0.0.1:8080:8080 roomwise:ci
       - name: Wait for the real API
         run: curl --fail --retry 30 --retry-connrefused --retry-all-errors --retry-delay 1 --max-time 5 http://127.0.0.1:8080/api/health
       - name: Verify the single-host app in Chromium
         timeout-minutes: 5
+        working-directory: web
         run: |
-          roomwise_playwright_version="$(node -p "require('./web/node_modules/@playwright/test/package.json').version")"
-          docker run --rm --init --shm-size=1g --network roomwise-ci \
-            --volume "$PWD/web:/work" --workdir /work \
-            --env PLAYWRIGHT_BASE_URL=http://roomwise:8080 \
+          roomwise_playwright_version="$(node -p "require('./node_modules/@playwright/test/package.json').version")"
+          docker run --rm --init --shm-size=1g --network host \
+            --volume "$PWD:/work" --workdir /work \
+            --env PLAYWRIGHT_BASE_URL=http://127.0.0.1:8080 \
             "mcr.microsoft.com/playwright:v${roomwise_playwright_version}-noble" npm run test:e2e
       - name: Container logs
         if: ${{ failure() }}
