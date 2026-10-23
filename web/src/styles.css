@@ -431,6 +431,13 @@ legend {
   color: #76767d;
   line-height: 1.7;
 }
+.room-id {
+  display: block;
+  margin-bottom: 14px;
+  color: #737379;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
 .room-book {
   width: 100%;
   padding: 12px 0 4px;

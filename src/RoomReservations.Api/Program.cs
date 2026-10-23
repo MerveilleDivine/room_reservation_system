@@ -21,6 +21,11 @@ builder.Services.AddScoped<UsageReportService>();
 
 var app = builder.Build();
 app.UseExceptionHandler();
+if (Directory.Exists(app.Environment.WebRootPath))
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+}
 app.MapReservationApi();
 await using (var scope = app.Services.CreateAsyncScope())
 {

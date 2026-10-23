@@ -73,6 +73,7 @@ test('create, reload, edit and cancel a booking through the real API', async ({
     await expect(
       page.getByRole('heading', { name: 'Atlas', exact: true }),
     ).toBeVisible();
+    await expect(page.getByText('ID: ' + atlas, { exact: true })).toBeVisible();
     await page.screenshot({
       path: info.outputPath('rooms-desktop.png'),
       fullPage: true,

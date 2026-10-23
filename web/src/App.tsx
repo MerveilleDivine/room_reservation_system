@@ -220,6 +220,7 @@ export function App() {
             <UsagePage rooms={allRooms.data ?? []} revision={revision} />
           ) : null}
           <footer className="main-footer">
+            <span>Demo data resets when the server restarts.</span>
             <span>Times in {timezone}</span>
             {policy.data ? (
               <span>

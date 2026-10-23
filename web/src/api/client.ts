@@ -23,7 +23,9 @@ export async function request<T>(
     if (error instanceof DOMException && error.name === 'AbortError')
       throw error;
     throw new ApiError(
-      'Cannot reach the API. Start the ASP.NET server on port 5080.',
+      import.meta.env.DEV
+        ? 'Cannot reach the API. Start the ASP.NET server on port 5080.'
+        : 'Cannot reach the booking service. Refresh the page or try again shortly.',
       'API_UNAVAILABLE',
     );
   }
@@ -35,7 +37,7 @@ export async function request<T>(
     throw new ApiError(
       problem.detail ??
         (response.status >= 500
-          ? 'The API is unavailable. Check that the ASP.NET server is running on port 5080.'
+          ? 'The booking service is unavailable. Please try again shortly.'
           : `Request failed (${response.status}). Please try again.`),
       problem.code ?? 'REQUEST_FAILED',
     );

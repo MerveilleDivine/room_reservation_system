@@ -41,6 +41,7 @@ export function RoomList({
                 <span key={item}>{equipmentLabels[item]}</span>
               ))}
             </div>
+            <small className="room-id">ID: {room.id}</small>
             <button
               className="button room-book"
               onClick={() => onBook(room.id)}

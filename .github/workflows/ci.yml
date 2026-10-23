@@ -67,3 +67,42 @@ jobs:
             web/playwright-report/
             web/test-results/
           retention-days: 7
+
+  container:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: docker build --file Dockerfile.vercel --tag roomwise:ci .
+      - run: npm ci
+        working-directory: web
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - name: Start the published app
+        run: docker run --detach --rm --name roomwise --publish 8080:8080 roomwise:ci
+      - name: Wait for the real API
+        run: curl --fail --retry 30 --retry-connrefused --retry-delay 1 http://127.0.0.1:8080/api/health
+      - name: Verify the single-host app in Chromium
+        run: npm run test:e2e
+        working-directory: web
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:8080
+      - name: Container logs
+        if: ${{ failure() }}
+        run: docker logs roomwise
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: roomwise-container-browser-results
+          path: |
+            web/playwright-report/
+            web/test-results/
+          retention-days: 7

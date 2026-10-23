@@ -40,7 +40,22 @@ VS Code's **Terminal → Run Task** menu also includes API, web and test command
 5. Open People to see active reservation counts calculated by the API.
 6. Open Usage to compare scheduled, checked-in, unconfirmed and early-released time. The seeded past meetings give the report traceable examples.
 
-Seed dates are relative to server startup. Restarting the API resets all demo data. No authentication is included because the brief explicitly excludes it. This is a local demo, not an internet-ready multi-user deployment.
+Seed dates are relative to server startup. Restarting the API resets all demo data. No authentication is included because the brief explicitly excludes it. This is an assignment demo; do not use it for private or real office bookings.
+
+## Hosted preview
+
+`Dockerfile.vercel` builds React and publishes the ASP.NET API into one non-root container. ASP.NET serves the built frontend and `/api` from the same origin. The .NET/EF Core InMemory implementation is also used online; no JavaScript replacement backend is involved.
+
+The container can be run locally with Docker:
+
+```powershell
+docker build --file Dockerfile.vercel --tag roomwise .
+docker run --rm --publish 8080:8080 roomwise
+```
+
+Open http://localhost:8080. Vercel detects `Dockerfile.vercel`; configure `PORT=8080`. Its container runtime is currently in beta. The app's required InMemory database belongs to one running process: restarts, idle shutdowns and separate instances have separate demo data. This preview is for trying the assignment, not durable shared storage.
+
+CI builds this same container and runs all six browser scenarios against its single port, in addition to testing the two-server development setup. `PLAYWRIGHT_BASE_URL` targets an already running app and skips starting development servers. Run this mutating suite only against a disposable demo with fresh seed data.
 
 ## Checks
 
