@@ -63,14 +63,16 @@ The usage report labels scheduled, observed and unconfirmed minutes separately. 
 
 Business failures carry a stable code and human message using Problem Details. Missing resources are 404, scheduling/lifecycle conflicts are 409, and invalid values are 400. Malformed bound requests are also routed through the handler. The frontend displays the server's message, keeps the form open, and preserves input.
 
-Unexpected server errors must not expose exception internals. Normal server logging remains enabled. The API is bound to loopback for development and has no authentication by explicit assignment scope. Do not deploy it publicly as-is.
+Unexpected server errors must not expose exception internals. Normal server logging remains enabled. The API is bound to loopback for development and has no authentication by explicit assignment scope. The public preview uses synthetic data and deployment-scoped hostname configuration; it is not intended for private or real office bookings.
 
 ## ADR 7: minimal interface
 
-The visual direction follows the requested Apple-inspired restraint: system sans-serif typography, white and soft gray surfaces, thin separators and blue for primary actions. Page titles describe the task. Room cards prioritize capacity, equipment and booking; decorative floor-plan illustrations and promotional headlines were removed. Inline SVG icons use a consistent stroke. The modal closes before unmounting so the native dialog can restore focus to its trigger. Reduced-motion settings and a keyboard skip link are supported.
+The revised visual direction uses a compact top navigation, white space, larger system typography, thin separators and monochrome actions. Rooms appear as a scannable list with explicit IDs, capacity, equipment, status and booking. One locally served, 159 KB workspace photograph provides context; its CC0 source is recorded in `web/public/images/CREDITS.md`, and its caption identifies it as illustrative rather than a photograph of a particular seeded room. Explicit image dimensions reserve layout space while it loads.
+
+Reservations, people, usage and the booking dialog share the same spacing and type scale. Inline SVG icons use a consistent stroke. The modal closes before unmounting so the native dialog can restore focus to its trigger. Reduced-motion settings and a keyboard skip link are supported.
 
 ## ADR 8: run the browser against the actual stack
 
-Playwright starts a fresh ASP.NET process and the React development server, then drives Chromium through the Vite proxy to EF Core InMemory. Tests run sequentially against deterministic seed scenarios, use distinct future booking windows, and cancel created future reservations. The browser uses Europe/Vilnius, while requests carry UTC instants. Screenshots and failure traces are stored in the CI artifact. Frontend component tests remain separate and explicitly mock their API boundary.
+Playwright starts a fresh ASP.NET process and the React development server, then drives Chromium through the Vite proxy to EF Core InMemory. CI also builds the published container and runs the same scenarios against ASP.NET serving both the React assets and API on one port. Tests run sequentially against deterministic seed scenarios, use distinct future booking windows, and cancel created future reservations. The browser uses Europe/Vilnius, while requests carry UTC instants. Screenshots and failure traces are stored in the CI artifact. Frontend component tests remain separate and explicitly mock their API boundary.
 
 References: [Playwright webServer](https://playwright.dev/docs/test-webserver) and [GitHub CI setup](https://playwright.dev/docs/ci-intro).

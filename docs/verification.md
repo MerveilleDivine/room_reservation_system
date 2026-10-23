@@ -2,7 +2,13 @@
 
 Date: 23 October 2026.
 
-## Current verified source
+## Interface revision
+
+Source commit `e84d84c1ae8caeda2ac5fd238305bd41cc6f40a6` replaces the sidebar and boxed room cards with top navigation, a room list, larger typography and one locally served workspace photograph. The required room IDs and controls remain visible.
+
+[Design checks run 39926034597](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/39926034597) passes the backend and frontend jobs and all six development-browser scenarios in 15.7 seconds. The published container builds successfully. Desktop rooms, the booking dialog, the usage report and the full 390 px mobile room list were visually inspected. The separate container-browser job's final result is available in that run.
+
+## Booking and container baseline
 
 [Checks run 39916754941](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/39916754941) verifies source commit `d532ec20fe96abc1878270769615e1423b07a618`. The later documentation commit does not change application code.
 
