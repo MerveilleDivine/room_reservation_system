@@ -95,7 +95,7 @@ export function RoomsPage({
         <ErrorNotice error={rooms.error} />
       ) : rooms.loading ? (
         <p className="loading" role="status">
-          Finding your spaces…
+          Loading rooms…
         </p>
       ) : rooms.data ? (
         <RoomList rooms={rooms.data} bookingEnabled={canBook} onBook={onBook} />

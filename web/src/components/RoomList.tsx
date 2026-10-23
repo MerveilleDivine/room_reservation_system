@@ -24,24 +24,25 @@ export function RoomList({
       {rooms.map((room) => (
         <article className="room-card" key={room.id}>
           <div className="room-card-body">
-            <div className="room-card-title">
-              <div>
-                <p className="room-location">Floor {room.floor}</p>
-                <h3>{room.name}</h3>
+            <div className="room-identity">
+              <p className="room-location">Floor {room.floor}</p>
+              <h3>{room.name}</h3>
+              <small className="room-id">ID: {room.id}</small>
+            </div>
+            <div className="room-specifications">
+              <p className="muted">
+                <Icon name="users" size={16} /> Up to {room.capacity} people
+              </p>
+              <div className="equipment-tags">
+                {room.equipment.map((item) => (
+                  <span key={item}>{equipmentLabels[item]}</span>
+                ))}
               </div>
-              <span className={`pill ${room.isActive ? 'active' : 'inactive'}`}>
-                {room.isActive ? 'Active' : 'Inactive'}
-              </span>
             </div>
-            <p className="muted">
-              <Icon name="users" size={16} /> Up to {room.capacity} people
-            </p>
-            <div className="equipment-tags">
-              {room.equipment.map((item) => (
-                <span key={item}>{equipmentLabels[item]}</span>
-              ))}
-            </div>
-            <small className="room-id">ID: {room.id}</small>
+            <span className={`pill ${room.isActive ? 'active' : 'inactive'}`}>
+              <span className="status-dot" aria-hidden="true" />
+              {room.isActive ? 'Active' : 'Inactive'}
+            </span>
             <button
               className="button room-book"
               onClick={() => onBook(room.id)}

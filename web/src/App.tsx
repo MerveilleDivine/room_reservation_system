@@ -21,8 +21,8 @@ const pages = {
   rooms: {
     label: 'Rooms',
     icon: 'rooms',
-    title: 'Meeting rooms',
-    description: 'Find a space for your next meeting.',
+    title: 'Find your room.',
+    description: 'Choose a space for your next meeting.',
   },
   reservations: {
     label: 'Reservations',
@@ -123,58 +123,39 @@ export function App() {
       <a href="#main" className="skip-link">
         Skip to content
       </a>
-      <aside className="sidebar">
-        <a className="brand" href="#main">
-          <Icon name="rooms" size={23} />
-          <span>Roomwise</span>
-        </a>
-        <p className="sidebar-label">Workspace</p>
-        <nav aria-label="Main navigation">
-          {(Object.keys(pages) as Page[]).map((item) => (
+      <header className="site-header">
+        <div className="header-inner">
+          <a className="brand" href="#main">
+            <span className="brand-mark">
+              <Icon name="door" size={20} />
+            </span>
+            <span>Roomwise</span>
+          </a>
+          <nav aria-label="Main navigation">
+            {(Object.keys(pages) as Page[]).map((item) => (
+              <button
+                key={item}
+                className={page === item ? 'nav-item selected' : 'nav-item'}
+                aria-current={page === item ? 'page' : undefined}
+                onClick={() => {
+                  setPage(item);
+                  setNotice('');
+                  setActionError(null);
+                }}
+              >
+                <span>{pages[item].label}</span>
+              </button>
+            ))}
+          </nav>
+          <div className="header-actions">
             <button
-              key={item}
-              className={page === item ? 'nav-item selected' : 'nav-item'}
-              aria-current={page === item ? 'page' : undefined}
-              onClick={() => {
-                setPage(item);
-                setNotice('');
-                setActionError(null);
-              }}
+              className="icon-button"
+              aria-label="Refresh workspace"
+              title="Refresh"
+              onClick={refresh}
             >
-              <Icon name={pages[item].icon} />
-              <span>{pages[item].label}</span>
+              <Icon name="refresh" size={17} />
             </button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <span className="workspace-avatar">R</span>
-          <div>
-            <strong>Shared workspace</strong>
-            <small>Meeting rooms</small>
-          </div>
-        </div>
-      </aside>
-      <main id="main" tabIndex={-1}>
-        <header className="topbar">
-          <span>
-            Workspace <span className="breadcrumb-divider">/</span>{' '}
-            <span className="breadcrumb-current">{current.label}</span>
-          </span>
-          <button
-            className="icon-button"
-            aria-label="Refresh workspace"
-            title="Refresh"
-            onClick={refresh}
-          >
-            <Icon name="refresh" size={17} />
-          </button>
-        </header>
-        <div className="main-content">
-          <section className="page-intro">
-            <div>
-              <h1>{current.title}</h1>
-              <p className="intro-copy">{current.description}</p>
-            </div>
             <button
               className="button primary new-booking"
               disabled={!canBook}
@@ -183,9 +164,38 @@ export function App() {
                 setForm({ reservation: null });
               }}
             >
-              <Icon name="plus" size={17} />
+              <Icon name="plus" size={16} />
               New reservation
             </button>
+          </div>
+        </div>
+      </header>
+      <main id="main" tabIndex={-1}>
+        <div className="main-content">
+          <section
+            className={
+              page === 'rooms' ? 'page-intro with-visual' : 'page-intro'
+            }
+          >
+            <div className="intro-text">
+              <p className="eyebrow">Shared workspace</p>
+              <h1>{current.title}</h1>
+              <p className="intro-copy">{current.description}</p>
+            </div>
+            {page === 'rooms' ? (
+              <figure className="intro-visual">
+                <img
+                  src="/images/workspace.jpg"
+                  alt=""
+                  width="1280"
+                  height="853"
+                  fetchPriority="high"
+                />
+                <figcaption>
+                  Illustrative workspace <span>Photograph by Breather</span>
+                </figcaption>
+              </figure>
+            ) : null}
           </section>
           {notice ? (
             <div className="notice success" role="status">

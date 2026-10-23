@@ -1,4 +1,10 @@
 const paths = {
+  door: (
+    <>
+      <path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17M3 21h18M9 3v18" />
+      <path d="M12 12h.01" strokeWidth="3" />
+    </>
+  ),
   rooms: (
     <>
       <rect x="3" y="3" width="7" height="7" rx="1.5" />
