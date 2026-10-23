@@ -4,6 +4,8 @@ A meeting-room reservation app built with ASP.NET Core, Entity Framework Core In
 
 The implementation follows the supplied room-reservation technical brief. It includes the required booking flow, a room usage report, and a minimal interface. Calendar/timeline and PDF export remain optional follow-up work. The original assignment PDF is kept outside this repository.
 
+[Open the live demo](https://roomwise-reservations.vercel.app/). No installation or sign-in is needed.
+
 ## Start in VS Code
 
 Install the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0), [Node.js 24 LTS](https://nodejs.org/en/download) (24.15 or newer), and Git. Node.js 22.22.2+ is also supported. Install the SDK, not just the .NET runtime.
@@ -53,7 +55,7 @@ docker build --file Dockerfile.vercel --tag roomwise .
 docker run --rm --publish 8080:8080 roomwise
 ```
 
-Open http://localhost:8080. Vercel detects `Dockerfile.vercel`; configure `PORT=8080`. Its container runtime is currently in beta. The app's required InMemory database belongs to one running process: restarts, idle shutdowns and separate instances have separate demo data. This preview is for trying the assignment, not durable shared storage.
+Open http://localhost:8080. `vercel.json` explicitly selects the container service and routes every request to it. The hosted project sets `PORT=8080` and `AllowedHosts=localhost;127.0.0.1;*.vercel.app`; ASP.NET keeps its local-only host defaults for normal development. Vercel's container runtime is currently in beta. The app's required InMemory database belongs to one running process: restarts, idle shutdowns and separate instances have separate demo data. This preview is for trying the assignment, not durable shared storage.
 
 CI builds this same container and runs all six browser scenarios against its single port, in addition to testing the two-server development setup. `PLAYWRIGHT_BASE_URL` targets an already running app and skips starting development servers. Run this mutating suite only against a disposable demo with fresh seed data.
 

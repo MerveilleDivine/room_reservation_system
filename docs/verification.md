@@ -1,17 +1,18 @@
 # Verification record
 
-Date: 22 October 2026.
+Date: 23 October 2026.
 
 ## Current verified source
 
-[Checks run 39797314851](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/39797314851) verifies source commit `16be356f5b9d52bb7b03ed4c17ffe1ad39dab48f`.
+[Checks run 39916754941](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/39916754941) verifies source commit `d532ec20fe96abc1878270769615e1423b07a618`. The later documentation commit does not change application code.
 
 | Check                 | Evidence                                                                                      | Result   |
 | --------------------- | --------------------------------------------------------------------------------------------- | -------- |
 | Backend restore/build | .NET 10; Release build through the test command                                               | Pass     |
 | Backend tests         | 57 passed, 0 failed, 0 skipped                                                                | Pass     |
 | Frontend              | Clean npm install, strict TypeScript/production build, 5 test files with 17 tests, formatting | Pass     |
-| Real browser          | Chromium, both running servers, 6 scenarios passed in 25 seconds                              | Pass     |
+| Development browser   | Chromium, both running servers, 6 scenarios passed in 23.3 seconds                            | Pass     |
+| Published container   | Docker build, real ASP.NET static assets/API on one port, 6 scenarios passed in 8 seconds     | Pass     |
 | Visual review         | Desktop rooms, booking dialog, usage and 390 px mobile screenshots inspected                  | Reviewed |
 
 The backend tests include all seven booking rules, interval boundaries, API flows, competing writes and usage aggregation. Their clock-dependent tests use fixed time.
@@ -28,6 +29,16 @@ The browser suite uses the real ASP.NET API and EF Core InMemory via the React a
 6. Send simultaneous HTTP requests for one room, confirm exactly one succeeds, and reject an organizer conflict in a different room.
 
 Browser configuration: 1440 × 1000 desktop, 390 × 844 mobile, Europe/Vilnius timezone. Successful run screenshots are available in the `roomwise-browser-results` artifact of the linked CI run.
+
+## Hosted preview
+
+The [live demo](https://roomwise-reservations.vercel.app/) deploys the actual ASP.NET/EF Core InMemory implementation and its built React assets in one container. Vercel deployment `dpl_6QAUK8WGUro6ZqkQ7zABLQWz2fgy` uses the verified commit above.
+
+Public HTTP checks returned 200 for `/`, `/api/health`, `/api/rooms` and `/api/usage`. The hosted browser displayed all four rooms with full IDs, opened the booking form and rendered the Usage page with the expected Atlas figures (120 scheduled minutes, 93 observed minutes). These hosted checks complement the six mutating scenarios run against the same Docker packaging in CI.
+
+The first hosting attempt did not detect the Dockerfile automatically; explicit container service routing fixed the empty deployment. The next surfaced ASP.NET's local-only hostname allowlist, corrected with a deployment-scoped `AllowedHosts` setting. CI also caught a startup race in its health probe, which now retries connection resets while the server initializes. The final container suite passes.
+
+The live demo has no sign-in and uses synthetic data. Its in-memory records reset on process replacement and are not shared across separate server instances.
 
 ## Defects found and fixed
 

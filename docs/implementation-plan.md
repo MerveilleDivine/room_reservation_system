@@ -13,10 +13,11 @@ Implemented in this iteration:
 - Fixed-clock usage tests and API tests.
 - Six Chromium scenarios against both running servers, including HTTP concurrency, reload persistence, keyboard focus and a 390 px viewport.
 - CI browser reports/screenshots and a VS Code browser-test task.
+- A hosted preview of the same .NET/EF Core InMemory code, with React assets served by ASP.NET in a single non-root container.
 
 ## Verification gate
 
-The current implementation passes 57 backend tests, 17 frontend unit tests and all six Chromium scenarios in GitHub Actions. Strict TypeScript, production build and formatting checks pass. Desktop, mobile, dialog and usage screenshots have been inspected. See verification.md for the source commit and run evidence.
+The current implementation passes 57 backend tests, 17 frontend unit tests and all six Chromium scenarios in both the development setup and the published Docker container in GitHub Actions. Strict TypeScript, production build and formatting checks pass. Desktop, mobile, dialog and usage screenshots have been inspected. The hosted preview's public endpoints and rendered rooms, booking form and usage report have also been checked. See verification.md for the source commit and run evidence.
 
 A browser test failure is handled at the failing boundary: inspect its request, response and trace, fix the cause, then rerun the affected check. The real browser suite does not intercept or mock API calls.
 
@@ -29,4 +30,4 @@ A browser test failure is handled at the failing boundary: inspect its request, 
 
 ## Deliberate scope
 
-Room/user administration, authentication, billing, external calendars, notifications and production hosting are outside the assignment's current scope. InMemory remains the required storage provider. The report uses manual check-in, not inferred physical occupancy, and does not invent office-hours utilization.
+Room/user administration, authentication, billing, external calendars, notifications and production operations are outside the assignment's current scope. A disposable hosted preview is provided for review. InMemory remains the required storage provider. The report uses manual check-in, not inferred physical occupancy, and does not invent office-hours utilization.

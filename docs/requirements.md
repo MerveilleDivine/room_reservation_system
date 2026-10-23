@@ -6,7 +6,7 @@ Source: the supplied internship room-reservation assignment. This document parap
 
 | ID            | Acceptance criterion                                                                               | Implementation and tests                                                                |
 | ------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Rooms         | Each room has an ID, name, capacity, floor, multiple equipment options and active status           | Room entity, seeded room list, room DTO, React room cards                               |
+| Rooms         | Each room has an ID, name, capacity, floor, multiple equipment options and active status           | Room entity, seeded room list, room DTO, React room cards with full IDs                 |
 | Room filters  | Minimum capacity, floor and equipment selection are applied by the API                             | `GET /api/rooms`; API test for combined filters                                         |
 | Users         | User ID, first/last name and active reservation count are available                                | Person entity, `GET /api/users`, Users page                                             |
 | Reservations  | Room, organizer, title, start/end, attendees and Booked/Completed/Cancelled status are represented | Reservation entity and DTO                                                              |
