@@ -1,7 +1,7 @@
 :root {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: #202020;
-  background: #fff;
+  background: #f8f7f4;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -16,6 +16,7 @@
 body {
   margin: 0;
   min-width: 320px;
+  background: #f8f7f4 url('/images/hexagon-pattern.svg') repeat;
 }
 button,
 input,
@@ -91,6 +92,7 @@ svg {
 }
 .site-header {
   border-bottom: 1px solid var(--line);
+  background: #fff;
 }
 .header-inner {
   max-width: 1200px;

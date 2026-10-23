@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="840" viewBox="0 0 840 840">
+  <defs>
+    <pattern id="hexagons" width="60" height="105" patternUnits="userSpaceOnUse">
+      <path d="M30 0 60 17.5V52.5L30 70 0 52.5V17.5Z M30 70V105" fill="none" stroke="#e8e5df" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <path fill="#f8f7f4" d="M0 0H840V840H0Z"/>
+  <path fill="url(#hexagons)" d="M0 0H840V840H0Z"/>
+  <g fill="#edf0fa" stroke="#ccd4ed" stroke-width="1">
+    <path d="M570 105 600 122.5V157.5L570 175 540 157.5V122.5Z"/>
+    <path d="M180 262.5 210 280V315L180 332.5 150 315V280Z"/>
+    <path d="M720 472.5 750 490V525L720 542.5 690 525V490Z"/>
+    <path d="M60 682.5 90 700V735L60 752.5 30 735V700Z"/>
+  </g>
+  <g fill="#f0f1f5" stroke="#dfe1e8" stroke-width="1">
+    <path d="M240 52.5 270 70V105L240 122.5 210 105V70Z"/>
+    <path d="M450 630 480 647.5V682.5L450 700 420 682.5V647.5Z"/>
+  </g>
+</svg>
