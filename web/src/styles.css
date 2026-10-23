@@ -16,7 +16,7 @@
 body {
   margin: 0;
   min-width: 320px;
-  background: #f8f7f4 url('/images/hexagon-pattern.svg') repeat;
+  background: #f8f7f4;
 }
 button,
 input,
@@ -88,7 +88,16 @@ svg {
   border: 0;
 }
 .app-shell {
+  isolation: isolate;
   min-height: 100vh;
+}
+.app-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: #f8f7f4 url('/images/hexagon-pattern.svg') repeat;
+  pointer-events: none;
 }
 .site-header {
   border-bottom: 1px solid var(--line);
