@@ -141,6 +141,8 @@ code .
 
 Follow the two-terminal startup instructions above. The repository contains the solution and engineering notes; the employer's original assignment and correspondence are kept outside the source tree.
 
+For submission, include both the GitHub repository and live demo links. If the repository is private, grant the reviewers access before sending it.
+
 ## Engineering notes
 
 - [Requirements and acceptance criteria](docs/requirements.md)

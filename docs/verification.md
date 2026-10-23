@@ -4,16 +4,16 @@ Date: 23 October 2026.
 
 ## Verified source
 
-[Checks run 39939234381](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/39939234381) verifies application commit `7e3a69463b8f80d7ca9ce7a84ef06584274ac233`. It adds linked additional-time reservations, booking request recovery and more precise usage/completion language to the minimal interface. The subsequent documentation update changes no application or test code.
+[Checks run 40010656310](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/40010656310) verifies source commit `339040e4eec9e00dd612f567eb3064882808de75`. It includes the requested hexagon background, linked additional-time reservations, booking request recovery and precise usage/completion language. Both browser checks use the official Playwright image matching the installed test dependency, avoiding host-level browser dependency installation. The subsequent documentation update changes no application, test or workflow code.
 
-| Check               | Evidence                                                                                         | Result   |
-| ------------------- | ------------------------------------------------------------------------------------------------ | -------- |
-| Backend             | .NET 10 Release restore/build; 80 tests passed, 0 failed, 0 skipped                              | Pass     |
-| Frontend            | Clean npm install, strict TypeScript, production build, 28 tests in 6 files, formatting          | Pass     |
-| Development browser | Real ASP.NET + Vite, Chromium; 8 scenarios passed in 20.7 seconds                                | Pass     |
-| Published container | Docker build, real ASP.NET serving React and API on one port; 8 scenarios passed in 13.0 seconds | Pass     |
-| Hosted preview      | Extra-time dialog inspected; a 30-minute linked booking created and displayed                    | Pass     |
-| Visual review       | Desktop rooms, booking dialog, usage, extra-time dialog and 390 px mobile screenshots            | Reviewed |
+| Check               | Evidence                                                                                        | Result   |
+| ------------------- | ----------------------------------------------------------------------------------------------- | -------- |
+| Backend             | .NET 10 Release restore/build; 80 tests passed, 0 failed, 0 skipped                             | Pass     |
+| Frontend            | Clean npm install, strict TypeScript, production build, 28 tests in 6 files, formatting         | Pass     |
+| Development browser | Real ASP.NET + Vite, Chromium; 8 scenarios passed in 19.2 seconds                               | Pass     |
+| Published container | Docker build, real ASP.NET serving React and API on one port; 8 scenarios passed in 8.4 seconds | Pass     |
+| Hosted preview      | Public background and booking controls verified; earlier linked-booking flow remains covered    | Pass     |
+| Visual review       | Updated desktop rooms and usage report, plus the 390 px mobile room list                        | Reviewed |
 
 The backend suite includes all seven original booking rules, interval boundaries, API flows, concurrent writes, usage aggregation, continuation conflicts/lifecycle, request-key validation and replay after time or resource state changes. Clock-sensitive tests use injected fixed or explicitly advanced time. An old edit replay is verified not to overwrite a newer change.
 
@@ -36,11 +36,19 @@ Configuration: 1440 × 1000 desktop, 390 × 844 mobile, Europe/Vilnius browser t
 
 ## Hosted preview
 
-The [live demo](https://roomwise-reservations.vercel.app/) serves the actual ASP.NET/EF Core InMemory implementation and built React assets in one non-root container. The feature preview for the verified source is deployment `dpl_63oqN5yBDBRCQH4mU73cCB6kNRSw`.
+The [live demo](https://roomwise-reservations.vercel.app/) serves the actual ASP.NET/EF Core InMemory implementation and built React assets in one non-root container. The background was verified on public deployment `dpl_EaZ3PMCaK85N2w5mo83iqfKQEYUR`, using application commit `5dd90380ea57882a1078bcaea0df8e7f4ae0213c`. The later CI changes leave application code unchanged.
 
-Hosted verification opened the extra-time dialog with keyboard focus on its duration selector, selected 30 minutes, submitted it, and displayed the new linked booking after the API refresh. A direct API read confirmed that its start equals the parent's scheduled end, its end is 30 minutes later, and its `continuationOfId` points to the original booking. Completed historical reservations displayed the distinction between early completion and an elapsed schedule.
+Current hosted verification inspected the hexagon background on Rooms and Usage and confirmed that the public booking controls become available after API data loads. The same revision's 390 px browser screenshot was reviewed for mobile layout. The background is a 918-byte local SVG with no extra runtime dependency.
+
+Earlier hosted verification opened the extra-time dialog, selected 30 minutes, submitted it, and displayed the new linked booking after the API refresh. A direct API read confirmed that its start equals the parent's scheduled end, its end is 30 minutes later, and its `continuationOfId` points to the original booking. Completed historical reservations displayed the distinction between early completion and an elapsed schedule. The current real-backend browser suite continues to cover these workflows.
 
 The live demo has no sign-in and uses synthetic data. Records and request receipts reset on process replacement and are not shared across separate instances. The one-process container tests establish behavior within the assignment's required storage model, not distributed persistence.
+
+## Submission handoff
+
+The required pages, seven configurable backend booking rules, clear API errors, backend usage calculations and requested ASP.NET/EF Core InMemory/React stack are implemented. The README includes clean-checkout startup commands; architecture, assumptions and API contracts are documented. Calendar/timeline and PDF export remain optional, unimplemented enhancements.
+
+Include the GitHub repository and public demo links when submitting. The repository is currently private, so reviewers need access to inspect and run the source.
 
 ## Local evidence and limits
 
