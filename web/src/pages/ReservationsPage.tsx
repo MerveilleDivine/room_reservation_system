@@ -118,8 +118,8 @@ export function ReservationsPage({
         />
       ) : null}
       <p className="footnote">
-        Check-in records observed use. A missing check-in does not prove that a
-        room was unused.
+        Check-in provides a reported-use estimate. A missing check-in does not
+        prove that a room was unused.
       </p>
     </section>
   );

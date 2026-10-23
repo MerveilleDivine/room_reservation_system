@@ -6,6 +6,7 @@ const actionLabels: Record<ReservationAction, string> = {
   edit: 'Edit',
   cancel: 'Cancel',
   'check-in': 'Check in',
+  'reserve-more': 'Reserve more time',
   end: 'End early',
 };
 
@@ -55,8 +56,14 @@ export function ReservationList({
             <small>
               {reservation.checkedInAtUtc
                 ? `Checked in at ${formatTime(reservation.checkedInAtUtc)}`
-                : 'Usage not confirmed by check-in'}
+                : 'No check-in recorded'}
             </small>
+            {reservation.continuationOfId ? (
+              <small>Additional time · linked booking</small>
+            ) : null}
+            {reservation.completionNote ? (
+              <small>{reservation.completionNote}</small>
+            ) : null}
           </div>
           <div className="reservation-actions">
             {reservation.allowedActions.map((action) => (

@@ -7,6 +7,7 @@ import type {
   Room,
 } from '../api/contracts';
 import { toLocalInput, toUtc } from '../lib/dates';
+import { useSubmissionKey } from '../hooks/useSubmissionKey';
 import { Icon } from './Icon';
 
 interface Props {
@@ -14,7 +15,11 @@ interface Props {
   people: Person[];
   initial: Reservation | null;
   preferredRoomId?: string;
-  onSave: (request: BookingRequest, id?: string) => Promise<void>;
+  onSave: (
+    request: BookingRequest,
+    id: string | undefined,
+    submissionKey: string,
+  ) => Promise<void>;
   onClose: () => void;
 }
 
@@ -30,6 +35,9 @@ export function BookingDialog({
   const titleInput = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<Error | null>(null);
   const [saving, setSaving] = useState(false);
+  const pendingRequest = useRef<BookingRequest | null>(null);
+  const submissionKey = useSubmissionKey();
+  const unconfirmed = error instanceof ApiError && error.outcomeUnknown;
   const [defaultStart] = useState(() => {
     const start = new Date(Date.now() + 60 * 60 * 1000);
     start.setMinutes(0, 0, 0);
@@ -51,19 +59,25 @@ export function BookingDialog({
   async function submit(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const request: BookingRequest =
+      unconfirmed && pendingRequest.current
+        ? pendingRequest.current
+        : {
+            title: String(form.get('title')),
+            roomId: String(form.get('roomId')),
+            organizerId: String(form.get('organizerId')),
+            startUtc: toUtc(String(form.get('start'))),
+            endUtc: toUtc(String(form.get('end'))),
+            attendees: Number(form.get('attendees')),
+          };
+    pendingRequest.current = request;
     setSaving(true);
     setError(null);
     try {
       await onSave(
-        {
-          title: String(form.get('title')),
-          roomId: String(form.get('roomId')),
-          organizerId: String(form.get('organizerId')),
-          startUtc: toUtc(String(form.get('start'))),
-          endUtc: toUtc(String(form.get('end'))),
-          attendees: Number(form.get('attendees')),
-        },
+        request,
         initial?.id,
+        submissionKey({ request, id: initial?.id }),
       );
     } catch (failure) {
       setError(
@@ -107,93 +121,99 @@ export function BookingDialog({
           void submit(event);
         }}
       >
-        <label>
-          Meeting title
-          <input
-            ref={titleInput}
-            name="title"
-            autoFocus
-            required
-            maxLength={120}
-            defaultValue={initial?.title ?? ''}
-            placeholder="e.g. Product planning"
-          />
-        </label>
-        <div className="form-grid">
+        <fieldset disabled={saving || unconfirmed} className="booking-fields">
           <label>
-            Room
-            <select
-              name="roomId"
-              required
-              defaultValue={initial?.roomId ?? preferredRoomId ?? ''}
-            >
-              <option value="" disabled>
-                Choose a room
-              </option>
-              {rooms.map((room) => (
-                <option key={room.id} value={room.id} disabled={!room.isActive}>
-                  {room.name} · {room.capacity} people
-                  {!room.isActive ? ' · Inactive' : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Organizer
-            <select
-              name="organizerId"
-              required
-              defaultValue={initial?.organizerId ?? ''}
-            >
-              <option value="" disabled>
-                Choose an organizer
-              </option>
-              {people.map((person) => (
-                <option key={person.id} value={person.id}>
-                  {person.firstName} {person.lastName}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Starts
+            Meeting title
             <input
-              name="start"
-              type="datetime-local"
-              step="60"
+              ref={titleInput}
+              name="title"
+              autoFocus
               required
-              defaultValue={toLocalInput(
-                initial ? new Date(initial.startUtc) : defaultStart,
-              )}
+              maxLength={120}
+              defaultValue={initial?.title ?? ''}
+              placeholder="e.g. Product planning"
             />
           </label>
+          <div className="form-grid">
+            <label>
+              Room
+              <select
+                name="roomId"
+                required
+                defaultValue={initial?.roomId ?? preferredRoomId ?? ''}
+              >
+                <option value="" disabled>
+                  Choose a room
+                </option>
+                {rooms.map((room) => (
+                  <option
+                    key={room.id}
+                    value={room.id}
+                    disabled={!room.isActive}
+                  >
+                    {room.name} · {room.capacity} people
+                    {!room.isActive ? ' · Inactive' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Organizer
+              <select
+                name="organizerId"
+                required
+                defaultValue={initial?.organizerId ?? ''}
+              >
+                <option value="" disabled>
+                  Choose an organizer
+                </option>
+                {people.map((person) => (
+                  <option key={person.id} value={person.id}>
+                    {person.firstName} {person.lastName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Starts
+              <input
+                name="start"
+                type="datetime-local"
+                step="60"
+                required
+                defaultValue={toLocalInput(
+                  initial ? new Date(initial.startUtc) : defaultStart,
+                )}
+              />
+            </label>
+            <label>
+              Ends
+              <input
+                name="end"
+                type="datetime-local"
+                step="60"
+                required
+                defaultValue={toLocalInput(
+                  initial
+                    ? new Date(initial.endUtc)
+                    : new Date(defaultStart.getTime() + 60 * 60 * 1000),
+                )}
+              />
+            </label>
+          </div>
           <label>
-            Ends
+            Number of attendees
             <input
-              name="end"
-              type="datetime-local"
-              step="60"
+              className="short-input"
+              name="attendees"
+              type="number"
+              min="1"
+              step="1"
               required
-              defaultValue={toLocalInput(
-                initial
-                  ? new Date(initial.endUtc)
-                  : new Date(defaultStart.getTime() + 60 * 60 * 1000),
-              )}
+              defaultValue={initial?.attendees ?? 1}
             />
           </label>
-        </div>
-        <label>
-          Number of attendees
-          <input
-            className="short-input"
-            name="attendees"
-            type="number"
-            min="1"
-            step="1"
-            required
-            defaultValue={initial?.attendees ?? 1}
-          />
-        </label>
+        </fieldset>
         <p className="form-note">
           Times use your device’s timezone. Capacity and scheduling conflicts
           are checked when you save.
@@ -216,9 +236,11 @@ export function BookingDialog({
           <button className="button primary" disabled={saving}>
             {saving
               ? 'Saving…'
-              : initial
-                ? 'Save changes'
-                : 'Create reservation'}
+              : unconfirmed
+                ? 'Retry reservation'
+                : initial
+                  ? 'Save changes'
+                  : 'Create reservation'}
           </button>
         </div>
       </form>

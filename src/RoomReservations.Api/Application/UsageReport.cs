@@ -49,7 +49,7 @@ public static class UsageReportBuilder
 
         return new UsageReportDto(from.ToUniversalTime(), to.ToUniversalTime(), now.ToUniversalTime(),
             "Manual check-in",
-            "Observed time starts at check-in. Time without a check-in is unconfirmed, not evidence that a room was unused.", rows);
+            "Reported use is an estimate from manual check-in until early completion, the scheduled end or this snapshot. It does not establish continuous presence, actual departure or an overrun. A missing check-in is not evidence of a no-show.", rows);
     }
 
     private static double Minutes(IEnumerable<(DateTimeOffset Start, DateTimeOffset End)> intervals,

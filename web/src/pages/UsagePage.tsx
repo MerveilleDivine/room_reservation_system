@@ -118,10 +118,10 @@ export function UsagePage({
                   <th scope="col">Room</th>
                   <th scope="col">Bookings</th>
                   <th scope="col">Scheduled</th>
-                  <th scope="col">Observed</th>
+                  <th scope="col">Reported use</th>
                   <th scope="col">Unconfirmed</th>
                   <th scope="col">Freed</th>
-                  <th scope="col">Confirmed share</th>
+                  <th scope="col">Reported share</th>
                 </tr>
               </thead>
               <tbody>
@@ -159,7 +159,7 @@ export function UsagePage({
                           <progress
                             max={100}
                             value={room.confirmedSharePercent}
-                            aria-label={room.roomName + ' confirmed share'}
+                            aria-label={room.roomName + ' reported share'}
                           />
                         </div>
                       )}
@@ -181,17 +181,18 @@ export function UsagePage({
                 </dd>
               </div>
               <div>
-                <dt>Observed</dt>
+                <dt>Reported use</dt>
                 <dd>
-                  Time from manual check-in to the earlier of meeting end, early
-                  completion or the report snapshot.
+                  An estimate from manual check-in to the earlier of scheduled
+                  end, early completion or the report snapshot. It cannot
+                  establish continuous presence or late departure.
                 </dd>
               </div>
               <div>
                 <dt>Unconfirmed</dt>
                 <dd>
-                  Elapsed reserved time without an observed check-in. It does
-                  not establish that a room was empty.
+                  Elapsed reserved time without a manual check-in. It does not
+                  establish that a room was empty.
                 </dd>
               </div>
               <div>
@@ -202,9 +203,9 @@ export function UsagePage({
                 </dd>
               </div>
               <div>
-                <dt>Confirmed share</dt>
+                <dt>Reported share</dt>
                 <dd>
-                  Observed minutes divided by elapsed reserved minutes. Future
+                  Reported minutes divided by elapsed reserved minutes. Future
                   time is excluded. A dash means no elapsed reservation time.
                 </dd>
               </div>

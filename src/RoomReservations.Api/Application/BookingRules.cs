@@ -6,6 +6,8 @@ namespace RoomReservations.Api.Application;
 /// <summary>All booking decisions live here, not in React. Intervals are [start, end).</summary>
 public sealed class BookingRules(IOptions<BookingOptions> options)
 {
+    public TimeSpan MaximumDuration => TimeSpan.FromDays(options.Value.MaximumDurationDays);
+
     public void Validate(
         BookingRequest request,
         Room room,
@@ -22,7 +24,7 @@ public sealed class BookingRules(IOptions<BookingOptions> options)
         if (request.StartUtc <= now)
             throw new BookingException("START_NOT_FUTURE", "Choose a start time in the future.");
 
-        if (request.EndUtc - request.StartUtc > TimeSpan.FromDays(options.Value.MaximumDurationDays))
+        if (request.EndUtc - request.StartUtc > MaximumDuration)
             throw new BookingException("DURATION_EXCEEDED", $"A reservation cannot exceed {options.Value.MaximumDurationDays} days.");
 
         if (request.StartUtc > now.AddDays(options.Value.MaximumAdvanceDays))

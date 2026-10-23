@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/client';
-import { people, rooms } from '../test/fixtures';
+import { people, reservation, rooms } from '../test/fixtures';
 import { BookingDialog } from './BookingDialog';
 
 describe('reservation form', () => {
@@ -40,6 +40,7 @@ describe('reservation form', () => {
           endUtc: new Date('2026-10-25T10:00').toISOString(),
         }),
         undefined,
+        expect.any(String),
       ),
     );
   });
@@ -90,5 +91,61 @@ describe('reservation form', () => {
       />,
     );
     expect(screen.getByRole('option', { name: /Studio/ })).toBeDisabled();
+  });
+
+  it('retries an unconfirmed booking with the exact same payload and identifier', async () => {
+    const save = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new ApiError(
+          'Confirmation was lost. Retry this request.',
+          'BOOKING_UNCONFIRMED',
+          true,
+        ),
+      )
+      .mockResolvedValueOnce(undefined);
+    render(
+      <BookingDialog
+        rooms={rooms}
+        people={people}
+        initial={reservation}
+        onSave={save}
+        onClose={vi.fn()}
+      />,
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'BOOKING_UNCONFIRMED',
+    );
+    expect(screen.getByLabelText('Meeting title')).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Retry reservation' }));
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(save.mock.calls[1]).toEqual(save.mock.calls[0]);
+    expect(save.mock.calls[1]![0]).toMatchObject({
+      title: reservation.title,
+      roomId: reservation.roomId,
+    });
+  });
+
+  it('assigns a new identifier when input changes after a definite rejection', async () => {
+    const save = vi
+      .fn()
+      .mockRejectedValue(new ApiError('Room is busy.', 'ROOM_OVERLAP'));
+    render(
+      <BookingDialog
+        rooms={rooms}
+        people={people}
+        initial={reservation}
+        onSave={save}
+        onClose={vi.fn()}
+      />,
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await screen.findByRole('alert');
+    await user.type(screen.getByLabelText('Meeting title'), ' revised');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(save.mock.calls[1]![2]).not.toBe(save.mock.calls[0]![2]);
   });
 });

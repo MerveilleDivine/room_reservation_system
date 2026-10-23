@@ -48,7 +48,7 @@ describe('room usage', () => {
     expect(within(table).getByText('93%')).toBeInTheDocument();
     expect(screen.getByText(report.observationNote)).toBeInTheDocument();
     expect(
-      within(table).getByRole('progressbar', { name: 'Atlas confirmed share' }),
+      within(table).getByRole('progressbar', { name: 'Atlas reported share' }),
     ).toHaveAttribute('value', '93');
   });
 

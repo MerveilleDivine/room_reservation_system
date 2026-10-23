@@ -174,6 +174,140 @@ test('conflicting booking keeps form data and shows the backend error', async ({
   }
 });
 
+test('extra time respects the next room and organizer bookings', async ({
+  page,
+  request,
+}, info) => {
+  const meetings = (await (
+    await request.get('/api/reservations')
+  ).json()) as Reservation[];
+  const parent = meetings.find(
+    (meeting) => meeting.title === 'Engineering sync',
+  )!;
+  const createdIds: string[] = [];
+  const blocker = {
+    ...booking(1, parent.roomId, alex),
+    title: 'Next team has priority',
+    startUtc: parent.endUtc,
+    endUtc: new Date(Date.parse(parent.endUtc) + 60 * 60 * 1000).toISOString(),
+  };
+  try {
+    const roomBlock = await request.post('/api/reservations', {
+      data: blocker,
+    });
+    expect(roomBlock.status()).toBe(201);
+    const roomBooking = (await roomBlock.json()) as Reservation;
+    createdIds.push(roomBooking.id);
+    await page.goto('/');
+    await page
+      .getByRole('button', { name: 'Reservations', exact: true })
+      .click();
+    await page
+      .getByRole('article')
+      .filter({
+        has: page.getByRole('heading', { name: parent.title, exact: true }),
+      })
+      .getByRole('button', { name: 'Reserve more time' })
+      .click();
+    await expect(page.getByLabel('Additional time')).toBeFocused();
+    await page.getByLabel('Additional time').selectOption('30');
+    await page.screenshot({
+      path: info.outputPath('extra-time-desktop.png'),
+      fullPage: true,
+    });
+    await page
+      .getByRole('button', { name: 'Reserve extra time', exact: true })
+      .click();
+    await expect(page.getByRole('alert')).toContainText('ROOM_OVERLAP');
+    await expect(page.getByLabel('Additional time')).toHaveValue('30');
+    await request.post(`/api/reservations/${roomBooking.id}/cancel`);
+    const organizerBlock = await request.post('/api/reservations', {
+      data: { ...blocker, roomId: atlas, organizerId: parent.organizerId },
+    });
+    expect(organizerBlock.status()).toBe(201);
+    const organizerBooking = (await organizerBlock.json()) as Reservation;
+    createdIds.push(organizerBooking.id);
+    await page
+      .getByRole('button', { name: 'Reserve extra time', exact: true })
+      .click();
+    await expect(page.getByRole('alert')).toContainText('ORGANIZER_OVERLAP');
+    await request.post(`/api/reservations/${organizerBooking.id}/cancel`);
+    const confirmation = page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .endsWith(`/api/reservations/${parent.id}/continuations`) &&
+        response.status() === 201,
+    );
+    await page
+      .getByRole('button', { name: 'Reserve extra time', exact: true })
+      .click();
+    const child = (await (await confirmation).json()) as Reservation;
+    createdIds.push(child.id);
+    expect(child.continuationOfId).toBe(parent.id);
+    expect(child.startUtc).toBe(parent.endUtc);
+    expect(Date.parse(child.endUtc) - Date.parse(child.startUtc)).toBe(
+      30 * 60 * 1000,
+    );
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await expect(
+      page.getByText('Additional time · linked booking', { exact: true }),
+    ).toBeVisible();
+  } finally {
+    for (const id of createdIds)
+      await request.post(`/api/reservations/${id}/cancel`);
+  }
+});
+
+test('a lost HTTP confirmation is recovered without creating a duplicate', async ({
+  page,
+  request,
+}) => {
+  const value = { ...booking(6), title: 'Recover a lost confirmation' };
+  let createdId: string | undefined;
+  let submissionKey: string | undefined;
+  // Fault injection only: the real API commits, then the browser loses its response.
+  await page.route(
+    '**/api/reservations',
+    async (route) => {
+      if (route.request().method() !== 'POST') return route.continue();
+      submissionKey = route.request().headers()['idempotency-key'];
+      const response = await route.fetch();
+      expect(response.status()).toBe(201);
+      createdId = ((await response.json()) as Reservation).id;
+      await route.abort('failed');
+    },
+    { times: 1 },
+  );
+  try {
+    await page.goto('/');
+    await page
+      .getByRole('button', { name: 'New reservation', exact: true })
+      .click();
+    await fillBooking(page, value);
+    await page
+      .getByRole('button', { name: 'Create reservation', exact: true })
+      .click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: value.title, exact: true }),
+    ).toBeVisible();
+    expect(submissionKey).toBeTruthy();
+    const reservations = (await (
+      await request.get('/api/reservations')
+    ).json()) as Reservation[];
+    expect(
+      reservations.filter((reservation) => reservation.title === value.title),
+    ).toHaveLength(1);
+    const recovered = (await (
+      await request.get(`/api/booking-requests/${submissionKey}`)
+    ).json()) as Reservation;
+    expect(recovered.id).toBe(createdId);
+  } finally {
+    if (createdId) await request.post(`/api/reservations/${createdId}/cancel`);
+  }
+});
+
 test('check-in and early completion release the ongoing room', async ({
   page,
   request,

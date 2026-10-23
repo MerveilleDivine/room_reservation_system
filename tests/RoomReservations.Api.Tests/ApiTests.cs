@@ -1,12 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.EntityFrameworkCore;
 using RoomReservations.Api.Application;
-using RoomReservations.Api.Infrastructure;
 
 namespace RoomReservations.Api.Tests;
 
@@ -154,21 +148,4 @@ public sealed class ApiTests
         Assert.Equal("ROOM_NOT_FOUND", (await response.Content.ReadFromJsonAsync<Problem>())!.Code);
     }
 
-    private sealed class TestApplication : WebApplicationFactory<Program>
-    {
-        private readonly string databaseName = Guid.NewGuid().ToString();
-
-        protected override void ConfigureWebHost(IWebHostBuilder builder) => builder.ConfigureServices(services =>
-        {
-            services.RemoveAll<TimeProvider>();
-            services.AddSingleton<TimeProvider>(new FixedClock(Now));
-            services.RemoveAll<DbContextOptions<ReservationsDbContext>>();
-            services.AddDbContext<ReservationsDbContext>(options => options.UseInMemoryDatabase(databaseName));
-        });
-    }
-
-    private sealed class FixedClock(DateTimeOffset value) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => value;
-    }
 }

@@ -39,5 +39,7 @@ export const reservation: Reservation = {
   status: 'Booked',
   checkedInAtUtc: null,
   actualEndUtc: null,
+  continuationOfId: null,
+  completionNote: null,
   allowedActions: ['edit', 'cancel'],
 };

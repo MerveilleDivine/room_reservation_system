@@ -8,6 +8,8 @@ public sealed record BookingRequest(
     DateTimeOffset EndUtc,
     int Attendees);
 
+public sealed record ContinuationRequest(int AdditionalMinutes);
+
 public sealed record RoomDto(
     Guid Id, string Name, int Capacity, string Floor, string[] Equipment, bool IsActive);
 
@@ -18,7 +20,7 @@ public sealed record ReservationDto(
     Guid Id, Guid RoomId, string RoomName, Guid OrganizerId, string OrganizerName,
     string Title, DateTimeOffset StartUtc, DateTimeOffset EndUtc, int Attendees,
     string Status, DateTimeOffset? CheckedInAtUtc, DateTimeOffset? ActualEndUtc,
-    string[] AllowedActions);
+    string[] AllowedActions, Guid? ContinuationOfId, string? CompletionNote);
 
 public sealed record BookingPolicyDto(int MaximumDurationDays, int MaximumAdvanceDays);
 

@@ -73,11 +73,14 @@ public static class Endpoints
         });
 
         app.MapPost("/api/reservations", async (
-            BookingRequest request, ReservationService service, CancellationToken cancellationToken) =>
+            BookingRequest request, HttpRequest http, ReservationService service, CancellationToken cancellationToken) =>
         {
-            var result = await service.SaveAsync(request, null, cancellationToken);
+            var result = await service.SaveAsync(request, null, cancellationToken, SubmissionKey(http));
             return Results.Created($"/api/reservations/{result.Id}", result);
         });
+        app.MapGet("/api/booking-requests/{requestId:guid}", async (
+            Guid requestId, ReservationService service, CancellationToken cancellationToken) =>
+            Results.Ok(await service.RecoverAsync(requestId, cancellationToken)));
         app.MapGet("/api/reservations/{id:guid}", async (
             Guid id, ReservationsDbContext db, TimeProvider clock, CancellationToken cancellationToken) =>
         {
@@ -87,8 +90,14 @@ public static class Endpoints
             return Results.Ok(reservation.ToDto(clock.GetUtcNow()));
         });
         app.MapPut("/api/reservations/{id:guid}", async (
-            Guid id, BookingRequest request, ReservationService service, CancellationToken cancellationToken) =>
-            Results.Ok(await service.SaveAsync(request, id, cancellationToken)));
+            Guid id, BookingRequest request, HttpRequest http, ReservationService service, CancellationToken cancellationToken) =>
+            Results.Ok(await service.SaveAsync(request, id, cancellationToken, SubmissionKey(http))));
+        app.MapPost("/api/reservations/{id:guid}/continuations", async (
+            Guid id, ContinuationRequest request, HttpRequest http, ReservationService service, CancellationToken cancellationToken) =>
+        {
+            var result = await service.ReserveMoreAsync(id, request, cancellationToken, SubmissionKey(http));
+            return Results.Created($"/api/reservations/{result.Id}", result);
+        });
         app.MapPost("/api/reservations/{id:guid}/cancel", async (
             Guid id, ReservationService service, CancellationToken cancellationToken) =>
             Results.Ok(await service.TransitionAsync(id, "cancel", cancellationToken)));
@@ -98,5 +107,13 @@ public static class Endpoints
         app.MapPost("/api/reservations/{id:guid}/end", async (
             Guid id, ReservationService service, CancellationToken cancellationToken) =>
             Results.Ok(await service.TransitionAsync(id, "end", cancellationToken)));
+    }
+
+    private static Guid? SubmissionKey(HttpRequest request)
+    {
+        if (!request.Headers.TryGetValue("Idempotency-Key", out var values)) return null;
+        if (values.Count != 1 || !Guid.TryParse(values[0], out var key) || key == Guid.Empty)
+            throw new BookingException("INVALID_REQUEST_ID", "Idempotency-Key must contain a single, non-empty UUID.");
+        return key;
     }
 }

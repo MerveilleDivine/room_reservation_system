@@ -23,12 +23,19 @@ public static class DtoMapping
         reservation.OrganizerId, $"{reservation.Organizer.FirstName} {reservation.Organizer.LastName}",
         reservation.Title, reservation.StartUtc, reservation.EndUtc, reservation.Attendees,
         reservation.StatusAt(now).ToString(), reservation.CheckedInAtUtc, reservation.ActualEndUtc,
-        AllowedActions(reservation, now));
+        AllowedActions(reservation, now), reservation.ContinuationOfId,
+        reservation.StatusAt(now) == ReservationStatus.Completed
+            ? reservation.ActualEndUtc is not null
+                ? "Ended early."
+                : "Scheduled time ended. Actual departure is not recorded."
+            : null);
 
     private static string[] AllowedActions(Reservation reservation, DateTimeOffset now)
     {
         if (reservation.StatusAt(now) != ReservationStatus.Booked) return [];
         if (reservation.StartUtc > now) return ["edit", "cancel"];
-        return reservation.CheckedInAtUtc is null ? ["check-in", "end"] : ["end"];
+        return reservation.CheckedInAtUtc is null
+            ? ["check-in", "reserve-more", "end"]
+            : ["reserve-more", "end"];
     }
 }

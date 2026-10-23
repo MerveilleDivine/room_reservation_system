@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ApiError, request, saveReservation } from './client';
+import { reservation } from '../test/fixtures';
+import {
+  ApiError,
+  request,
+  reserveAdditionalTime,
+  saveReservation,
+} from './client';
 
 describe('API boundary', () => {
   it('preserves the server error code and readable message', async () => {
@@ -63,6 +69,106 @@ describe('API boundary', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/reservations/reservation-id',
       expect.objectContaining({ method: 'PUT', body: JSON.stringify(booking) }),
+    );
+  });
+
+  it.each(['network', 'server', 'unreadable'])(
+    'recovers a saved booking after a lost %s confirmation',
+    async (failure) => {
+      const fetchMock = vi.fn();
+      if (failure === 'network')
+        fetchMock.mockRejectedValueOnce(new TypeError('Connection lost'));
+      else
+        fetchMock.mockResolvedValueOnce(
+          new Response(
+            failure === 'server' ? 'Unavailable' : '<html>Unexpected</html>',
+            { status: failure === 'server' ? 502 : 200 },
+          ),
+        );
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify(reservation)),
+      );
+      vi.stubGlobal('fetch', fetchMock);
+      const key = crypto.randomUUID();
+      const result = await saveReservation(reservation, undefined, key);
+      expect(result.id).toBe(reservation.id);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(
+        (fetchMock.mock.calls[0]![1] as RequestInit).headers,
+      ).toBeInstanceOf(Headers);
+      expect(
+        new Headers((fetchMock.mock.calls[0]![1] as RequestInit).headers).get(
+          'Idempotency-Key',
+        ),
+      ).toBe(key);
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        `/api/booking-requests/${key}`,
+        expect.objectContaining({ cache: 'no-store' }),
+      );
+    },
+  );
+
+  it('keeps a definite conflict as a validation failure without a recovery lookup', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: 'ROOM_OVERLAP',
+          detail: 'Room already booked.',
+        }),
+        { status: 409 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(saveReservation(reservation)).rejects.toMatchObject({
+      code: 'ROOM_OVERLAP',
+      outcomeUnknown: false,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves uncertainty if no receipt can be found and reuses the supplied key on retry', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Lost response'))
+      .mockResolvedValueOnce(new Response('{}', { status: 404 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(reservation)));
+    vi.stubGlobal('fetch', fetchMock);
+    const key = crypto.randomUUID();
+    await expect(
+      saveReservation(reservation, undefined, key),
+    ).rejects.toMatchObject({
+      code: 'BOOKING_UNCONFIRMED',
+      outcomeUnknown: true,
+    });
+    expect((await saveReservation(reservation, undefined, key)).id).toBe(
+      reservation.id,
+    );
+    const first = new Headers(
+      (fetchMock.mock.calls[0]![1] as RequestInit).headers,
+    );
+    const retry = new Headers(
+      (fetchMock.mock.calls[2]![1] as RequestInit).headers,
+    );
+    expect(retry.get('Idempotency-Key')).toBe(first.get('Idempotency-Key'));
+  });
+
+  it('uses the same recovery protocol for additional time', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Lost response'))
+      .mockResolvedValueOnce(new Response(JSON.stringify(reservation)));
+    vi.stubGlobal('fetch', fetchMock);
+    const key = crypto.randomUUID();
+    await expect(
+      reserveAdditionalTime('parent-id', 30, key),
+    ).resolves.toMatchObject({ id: reservation.id });
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/reservations/parent-id/continuations',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ additionalMinutes: 30 }),
+      }),
     );
   });
 });

@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
-import { reservationAction, saveReservation } from './api/client';
+import {
+  reservationAction,
+  reserveAdditionalTime,
+  saveReservation,
+} from './api/client';
 import type {
   BookingPolicy,
   BookingRequest,
@@ -9,6 +13,7 @@ import type {
   Room,
 } from './api/contracts';
 import { BookingDialog } from './components/BookingDialog';
+import { ContinuationDialog } from './components/ContinuationDialog';
 import { ErrorNotice } from './components/Feedback';
 import { Icon } from './components/Icon';
 import { RoomsPage } from './pages/RoomsPage';
@@ -40,7 +45,7 @@ const pages = {
     label: 'Usage',
     icon: 'chart',
     title: 'Room usage',
-    description: 'See how booked time compares with confirmed use.',
+    description: 'Compare booked time with check-in-based estimates.',
   },
 } as const;
 type Page = keyof typeof pages;
@@ -51,6 +56,7 @@ export function App() {
   const [page, setPage] = useState<Page>('rooms');
   const [revision, setRevision] = useState(0);
   const [form, setForm] = useState<BookingForm | null>(null);
+  const [continuation, setContinuation] = useState<Reservation | null>(null);
   const [pending, setPending] = useState(false);
   const [actionError, setActionError] = useState<Error | null>(null);
   const [notice, setNotice] = useState('');
@@ -67,11 +73,26 @@ export function App() {
     return () => window.clearInterval(timer);
   }, []);
 
-  async function save(request: BookingRequest, id?: string) {
-    await saveReservation(request, id);
+  async function save(
+    request: BookingRequest,
+    id: string | undefined,
+    submissionKey: string,
+  ) {
+    await saveReservation(request, id, submissionKey);
     setForm(null);
     setPage('reservations');
     setNotice(id ? 'Reservation updated.' : 'Reservation created.');
+    refresh();
+  }
+
+  async function saveContinuation(
+    id: string,
+    additionalMinutes: number,
+    submissionKey: string,
+  ) {
+    await reserveAdditionalTime(id, additionalMinutes, submissionKey);
+    setContinuation(null);
+    setNotice('Extra time reserved as a linked booking.');
     refresh();
   }
 
@@ -83,6 +104,10 @@ export function App() {
     setNotice('');
     if (action === 'edit') {
       setForm({ reservation });
+      return;
+    }
+    if (action === 'reserve-more') {
+      setContinuation(reservation);
       return;
     }
     if (
@@ -249,6 +274,13 @@ export function App() {
           preferredRoomId={form.roomId}
           onSave={save}
           onClose={() => setForm(null)}
+        />
+      ) : null}
+      {continuation ? (
+        <ContinuationDialog
+          reservation={continuation}
+          onSave={saveContinuation}
+          onClose={() => setContinuation(null)}
         />
       ) : null}
     </div>

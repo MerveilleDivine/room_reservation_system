@@ -4,7 +4,9 @@ The Usage page reads `GET /api/usage`. Calculations run in ASP.NET. React displa
 
 ## Observation source
 
-The assignment does not provide sensors or an attendance feed. This implementation uses manual check-in as an explicit observation source. Observation starts when someone checks in and ends at the earlier of the effective meeting end or the report snapshot. Missing check-in is unconfirmed time. It does not establish that a room was empty.
+The assignment does not provide sensors or an attendance feed. This implementation uses manual check-in to estimate reported use. The estimate starts when someone checks in and ends at the earlier of the effective meeting end or the report snapshot. It does not establish continuous presence, actual departure or a meeting overrun. Missing check-in is unconfirmed time; it does not establish that a room was empty or that the organizer was a no-show.
+
+The UI labels are “Reported use” and “Reported share”. JSON fields `observedMinutes` and `confirmedSharePercent` are retained for compatibility. A booking's `Completed` status can simply mean its scheduled time elapsed; the reservation response and UI make that limitation explicit. A continuation is a separate booking and needs its own check-in rather than inheriting assumed attendance from its parent.
 
 The default report covers the last seven elapsed days. An explicit range is half-open `[from, to)` and may cover at most 366 elapsed days. Both dates must be provided together. Inactive rooms remain visible in historical reports. Cancelled bookings do not contribute.
 

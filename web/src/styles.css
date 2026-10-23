@@ -622,6 +622,8 @@ legend {
   line-height: 1.7;
 }
 .reservation-details small {
+  display: block;
+  margin-top: 6px;
   font-size: 10px;
   color: #73736c;
 }
@@ -716,6 +718,30 @@ legend {
 .booking-dialog form {
   display: grid;
   gap: 24px;
+}
+.booking-fields {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.continuation-context {
+  display: grid;
+  gap: 10px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.continuation-context h3 {
+  font-size: 18px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.continuation-context p {
+  color: #73736c;
+  font-size: 12px;
+  line-height: 1.7;
 }
 .booking-dialog input,
 .booking-dialog select {

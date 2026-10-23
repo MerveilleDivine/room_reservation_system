@@ -43,6 +43,7 @@ public sealed class Reservation
     public ReservationStatus Status { get; set; } = ReservationStatus.Booked;
     public DateTimeOffset? CheckedInAtUtc { get; set; }
     public DateTimeOffset? ActualEndUtc { get; set; }
+    public Guid? ContinuationOfId { get; set; }
 
     public DateTimeOffset EffectiveEndUtc => ActualEndUtc ?? EndUtc;
 
@@ -50,4 +51,12 @@ public sealed class Reservation
         Status == ReservationStatus.Booked && EffectiveEndUtc <= now
             ? ReservationStatus.Completed
             : Status;
+}
+
+/// <summary>A receipt for a booking write, retained for this in-memory server's lifetime.</summary>
+public sealed class BookingSubmission
+{
+    public Guid Id { get; set; }
+    public required string Fingerprint { get; set; }
+    public Guid ReservationId { get; set; }
 }

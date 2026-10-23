@@ -26,7 +26,7 @@ Reference: [Microsoft EF Core InMemory guidance](https://learn.microsoft.com/en-
 
 ## ADR 2: validate the complete booking on the backend
 
-**Decision:** one policy validator covers create and edit. A changed reservation is excluded from its own overlap check. Cancelled intervals do not block; an early-completed meeting blocks only its effective historical interval.
+**Decision:** one policy validator covers create, edit and continuation bookings. A changed reservation is excluded from its own overlap check. Cancelled intervals do not block; an early-completed meeting blocks only its effective historical interval. The service shares the room/organizer lookup, validation and mapping path; endpoints do not duplicate booking policy.
 
 **Concurrency:** the service acquires `BookingWriteGate` before reading conflicts and holds it through save. Cancel/check-in/end use the same gate. The API does not perform a separate availability check and then trust that old result during save.
 
@@ -45,11 +45,11 @@ Reference: [Microsoft EF Core InMemory guidance](https://learn.microsoft.com/en-
 **Decision:** keep `startUtc`/`endUtc`, `checkedInAtUtc` and `actualEndUtc` separate.
 
 - Scheduled duration is a booking, not measured physical occupancy.
-- Check-in starts an observed-use window; it does not retrospectively prove the room was used from scheduled start.
+- Check-in starts a reported-use estimate; it does not retrospectively prove the room was used from scheduled start, continuously afterwards, or until actual departure.
 - Early completion releases the room immediately while retaining its original scheduled end.
 - Missing check-in is unconfirmed use, not a no-show classification.
 
-The usage report labels scheduled, observed and unconfirmed minutes separately. Its interval-union calculations run in the backend and avoid double-counting an early-released slot that was booked again. The report snapshot uses the booking gate and one injected clock reading. See [usage-report.md](usage-report.md).
+The usage report labels scheduled, reported and unconfirmed minutes separately. Existing JSON metric names remain compatible. An elapsed booking carries a completion note explaining that actual departure is not recorded. Its interval-union calculations run in the backend and avoid double-counting an early-released slot that was booked again. The report snapshot uses the booking gate and one injected clock reading. See [usage-report.md](usage-report.md).
 
 ## ADR 5: modest frontend state
 
@@ -76,3 +76,19 @@ Reservations, people, usage and the booking dialog share the same spacing and ty
 Playwright starts a fresh ASP.NET process and the React development server, then drives Chromium through the Vite proxy to EF Core InMemory. CI also builds the published container and runs the same scenarios against ASP.NET serving both the React assets and API on one port. Tests run sequentially against deterministic seed scenarios, use distinct future booking windows, and cancel created future reservations. The browser uses Europe/Vilnius, while requests carry UTC instants. Screenshots and failure traces are stored in the CI artifact. Frontend component tests remain separate and explicitly mock their API boundary.
 
 References: [Playwright webServer](https://playwright.dev/docs/test-webserver) and [GitHub CI setup](https://playwright.dev/docs/ci-intro).
+
+## ADR 9: additional time is a linked future reservation
+
+The assignment requires newly saved or edited bookings to start in the future. Updating an ongoing booking's original start would violate that policy. Instead, the service derives a continuation beginning at its scheduled end and invokes the same booking validator. A nullable `ContinuationOfId` records provenance without coupling the two reservations' lifecycle transitions.
+
+Room and organizer conflicts are checked at save under the existing gate. One non-cancelled continuation per parent prevents repeated clicks with new request keys from creating several extra bookings. The parent stays unchanged; the child can be edited or cancelled while future, and needs its own check-in. This intentionally does not infer physical presence, automatically extend a slot, or release a no-show.
+
+## ADR 10: recover ambiguous booking writes with receipts
+
+A booking and its optional `BookingSubmission` receipt are staged in the same EF context and saved together while holding the booking gate. SHA-256 fingerprints use a normalized command payload including operation and target. Receipt replay happens before time-sensitive policy checks, so an acknowledged booking is recoverable after its start or after subsequent edits. Replaying an old edit returns current state without overwriting newer changes. Failed validation never consumes a key.
+
+The API boundary parses the HTTP header; the application service owns receipt matching and write orchestration. React's API client owns transport failure classification and the one recovery lookup. A small submission-key hook preserves identity across form retries; dialogs retain uncertain input rather than starting a different operation. No global state library, extra infrastructure service or alternate backend is introduced.
+
+The guarantee is limited to one in-memory server lifetime. Restart, scale-down or a second instance can lose or miss receipts. This is a recoverable demo workflow, not a claim of globally exactly-once delivery. A production database would need a unique request key, durable receipt retention and a transactional booking/concurrency strategy.
+
+The browser recovery test forwards a POST to the actual ASP.NET API, lets it commit, then aborts only its response to simulate a lost acknowledgement. The subsequent receipt lookup and reservation reads use the real backend. Other browser scenarios do not intercept traffic.

@@ -1,6 +1,11 @@
 export type Equipment = 'projector' | 'tv' | 'videoConferencing' | 'whiteboard';
 export type ReservationStatus = 'Booked' | 'Completed' | 'Cancelled';
-export type ReservationAction = 'edit' | 'cancel' | 'check-in' | 'end';
+export type ReservationAction =
+  | 'edit'
+  | 'cancel'
+  | 'check-in'
+  | 'reserve-more'
+  | 'end';
 
 export interface Room {
   id: string;
@@ -31,6 +36,8 @@ export interface Reservation {
   status: ReservationStatus;
   checkedInAtUtc: string | null;
   actualEndUtc: string | null;
+  continuationOfId: string | null;
+  completionNote: string | null;
   allowedActions: ReservationAction[];
 }
 
