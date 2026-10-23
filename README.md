@@ -38,9 +38,10 @@ VS Code's **Terminal → Run Task** menu also includes API, web and test command
 1. Browse the four seeded rooms. Filter by capacity, floor and one or more equipment options. Inactive Studio cannot be booked.
 2. Book Atlas with an organizer and a future time. Times are entered in your device's local timezone and sent to the API as UTC instants.
 3. On Reservations, edit or cancel a future booking. Try creating a second overlapping booking to see a readable backend error.
-4. Find the seeded **Engineering sync**, which starts 15 minutes before API startup. Check in and end it early to exercise observed-use timestamps and room release.
-5. Open People to see active reservation counts calculated by the API.
-6. Open Usage to compare scheduled, checked-in, unconfirmed and early-released time. The seeded past meetings give the report traceable examples.
+4. Find the seeded **Engineering sync**, which starts 15 minutes before API startup. Use **Reserve more time** to add a linked future booking. It must fit both the room and organizer's schedules. The extra booking has its own check-in and cancellation.
+5. Check in to the ongoing meeting and end it early to exercise reported-use timestamps and room release. Ending it early keeps any additional booking reserved; cancel that future booking separately if it is no longer needed.
+6. Open People to see active reservation counts calculated by the API.
+7. Open Usage to compare scheduled, reported, unconfirmed and early-released time. The seeded past meetings give the report traceable examples. A check-in is an estimate, and a scheduled end is not evidence of actual departure.
 
 Seed dates are relative to server startup. Restarting the API resets all demo data. No authentication is included because the brief explicitly excludes it. This is an assignment demo; do not use it for private or real office bookings.
 
@@ -57,7 +58,7 @@ docker run --rm --publish 8080:8080 roomwise
 
 Open http://localhost:8080. `vercel.json` explicitly selects the container service and routes every request to it. The hosted project sets `PORT=8080` and `AllowedHosts=localhost;127.0.0.1;*.vercel.app`; ASP.NET keeps its local-only host defaults for normal development. Vercel's container runtime is currently in beta. The app's required InMemory database belongs to one running process: restarts, idle shutdowns and separate instances have separate demo data. This preview is for trying the assignment, not durable shared storage.
 
-CI builds this same container and runs all six browser scenarios against its single port, in addition to testing the two-server development setup. `PLAYWRIGHT_BASE_URL` targets an already running app and skips starting development servers. Run this mutating suite only against a disposable demo with fresh seed data.
+CI builds this same container and runs all eight browser scenarios against its single port, in addition to testing the two-server development setup. `PLAYWRIGHT_BASE_URL` targets an already running app and skips starting development servers. Run this mutating suite only against a disposable demo with fresh seed data.
 
 ## Checks
 
@@ -82,23 +83,23 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Playwright starts both servers with fresh in-memory data. The suite covers create/reload/edit/cancel, server-side conflicts, check-in/early completion, usage filtering, mobile layout, keyboard focus and simultaneous HTTP booking requests. Its config uses Europe/Vilnius for browser-local date entry.
+Playwright starts both servers with fresh in-memory data. The suite covers create/reload/edit/cancel, server-side conflicts, additional time, recovery of a lost confirmation, check-in/early completion, usage filtering, mobile layout, keyboard focus and simultaneous HTTP booking requests. Its config uses Europe/Vilnius for browser-local date entry.
 
-The current implementation passes 57 backend tests, 17 frontend unit tests and six real Chromium scenarios. See [verification.md](docs/verification.md) for the tested source commit, CI run and remaining environment check.
+The current implementation passes 80 backend tests, 28 frontend unit tests and eight real Chromium scenarios in each server setup. See [verification.md](docs/verification.md) for the tested source commit, CI run and remaining environment check.
 
 ## Current scope
 
-| Area               | First milestone                                                                                           |
-| ------------------ | --------------------------------------------------------------------------------------------------------- |
-| Rooms              | Seed data, active/inactive status, capacity/floor/multiple-equipment filters                              |
-| Users              | Seed data, unique IDs, backend-calculated active reservation counts                                       |
-| Reservations       | Create, edit, cancel, check in, end early, filter by room/organizer/status/date range                     |
-| Rules              | Seven specified rules, configurable duration/advance limits, stable error codes                           |
-| Reliability        | Injectable clock, single-process write gate, API error contract, unit/integration/concurrency test source |
-| UI                 | Responsive pages, native modal, loading/empty/error states, UTC conversion                                |
-| Usage              | Backend interval-union calculations, report filters, observed/unconfirmed distinction                     |
-| Browser coverage   | Real React → ASP.NET → EF flow, desktop/mobile and keyboard checks                                        |
-| Optional next work | Calendar/timeline, PDF export, explicit office timezone/DST policy                                        |
+| Area               | First milestone                                                                                          |
+| ------------------ | -------------------------------------------------------------------------------------------------------- |
+| Rooms              | Seed data, active/inactive status, capacity/floor/multiple-equipment filters                             |
+| Users              | Seed data, unique IDs, backend-calculated active reservation counts                                      |
+| Reservations       | Create, edit, cancel, check in, reserve more time, end early, filter by room/organizer/status/date range |
+| Rules              | Seven specified rules, configurable duration/advance limits, stable error codes                          |
+| Reliability        | Injectable clock, single-process write gate, booking request receipts, validation and concurrency tests  |
+| UI                 | Responsive pages, native modal, loading/empty/error states, UTC conversion                               |
+| Usage              | Backend interval-union calculations, report filters, reported/unconfirmed distinction                    |
+| Browser coverage   | Real React → ASP.NET → EF flow, desktop/mobile and keyboard checks                                       |
+| Optional next work | Calendar/timeline, PDF export, explicit office timezone/DST policy                                       |
 
 ## Structure
 

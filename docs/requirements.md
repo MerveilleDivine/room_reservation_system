@@ -6,7 +6,7 @@ Source: the supplied internship room-reservation assignment. This document parap
 
 | ID            | Acceptance criterion                                                                               | Implementation and tests                                                                |
 | ------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Rooms         | Each room has an ID, name, capacity, floor, multiple equipment options and active status           | Room entity, seeded room list, room DTO, React room cards with full IDs                 |
+| Rooms         | Each room has an ID, name, capacity, floor, multiple equipment options and active status           | Room entity, seeded room list, room DTO, React room list with full IDs                  |
 | Room filters  | Minimum capacity, floor and equipment selection are applied by the API                             | `GET /api/rooms`; API test for combined filters                                         |
 | Users         | User ID, first/last name and active reservation count are available                                | Person entity, `GET /api/users`, Users page                                             |
 | Reservations  | Room, organizer, title, start/end, attendees and Booked/Completed/Cancelled status are represented | Reservation entity and DTO                                                              |
@@ -23,7 +23,7 @@ Source: the supplied internship room-reservation assignment. This document parap
 | Configuration | Duration and advance limits come from appsettings                                                  | Options binding/startup validation and configurable-policy test                         |
 | Technology    | ASP.NET backend, EF Core InMemory, React frontend, no authentication                               | Required stack retained                                                                 |
 
-Usage reporting is implemented in `GET /api/usage` and the Usage page. The [metric definitions](usage-report.md) distinguish scheduled, observed and unconfirmed time. See `verification.md` for executed test evidence rather than treating the acceptance matrix as a test result.
+Usage reporting is implemented in `GET /api/usage` and the Usage page. The [metric definitions](usage-report.md) distinguish scheduled, reported and unconfirmed time. See `verification.md` for executed test evidence rather than treating the acceptance matrix as a test result.
 
 ## Explicit assumptions
 
@@ -40,10 +40,12 @@ Usage reporting is implemented in `GET /api/usage` and the Usage page. The [metr
 11. **Actual use:** the brief does not specify a sensor, attendance feed or usage input. Manual check-in is an explicit, limited observation source. Missing check-in is **unknown/unconfirmed use**, not proof of a no-show. Check-in is accepted only during the scheduled meeting.
 12. **Availability:** an active room is eligible to book, not necessarily free now. The first milestone validates availability when a complete booking is submitted; it does not pretend that an active flag proves availability for every time slot.
 13. **No room/user CRUD:** seed data and browsing are included. The brief does not ask for room/user administration.
+14. **Additional time:** an ongoing meeting can request a separate linked reservation starting at its scheduled end. All original rules apply to that future booking, including the per-reservation duration limit. It has its own check-in, editing and cancellation; no existing booking is displaced.
+15. **Ambiguous confirmations:** create/edit/additional-time writes can use request receipts to recover a lost acknowledgement. The guarantee lasts for one in-memory server process and is not durable or distributed.
 
 ## Reporting decisions and follow-up
 
 - Manual check-in is the explicit observation source for this implementation. A sensor or attendance-feed integration would require a new requirement.
 - Choose a business timezone if reporting by office-local calendar day becomes required. Browser-local entry is adequate for the current local demo but ambiguous daylight-saving times need an explicit product policy before multi-office scheduling.
-- The report's percentage is confirmed share of elapsed reserved time. Office-hours utilization is not defined.
+- The report's percentage is reported share of elapsed reserved time, based on manual check-in estimates. Office-hours utilization is not defined. An elapsed schedule does not establish actual departure or a meeting overrun.
 - Ended meetings without check-in remain unconfirmed. Retrospective confirmation is not part of the current workflow.
