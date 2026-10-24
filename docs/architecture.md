@@ -57,7 +57,7 @@ The usage report labels scheduled, reported and unconfirmed minutes separately. 
 
 **Tradeoff:** no persistent client cache or router yet. Reloading returns to the Rooms page. Add a query library or routing when caching, deep links or more complex navigation justify it; do not add Redux solely to make the stack list longer.
 
-**Refresh:** mutation success reloads API-derived state, and a 30-second refresh updates elapsed statuses/allowed actions. Backend checks remain authoritative if a button's availability changes between refresh and click.
+**Refresh:** mutation success reloads API-derived state, and the Refresh workspace button reloads the current view on demand. There is no periodic API polling: an unattended demo tab must not keep a serverless container awake. Displayed statuses and allowed actions describe the last response. Backend checks remain authoritative if a button's availability changes between refresh and click.
 
 ## ADR 6: predictable failures
 

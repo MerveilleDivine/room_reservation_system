@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   reservationAction,
   reserveAdditionalTime,
@@ -65,13 +65,6 @@ export function App() {
   const policy = useApi<BookingPolicy>('/booking-policy', 0);
   const refresh = () => setRevision((value) => value + 1);
   const current = pages[page];
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      if (!document.hidden) setRevision((value) => value + 1);
-    }, 30_000);
-    return () => window.clearInterval(timer);
-  }, []);
 
   async function save(
     request: BookingRequest,

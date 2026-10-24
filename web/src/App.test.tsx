@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from './App';
@@ -22,6 +22,36 @@ function mockApi() {
 }
 
 describe('workspace', () => {
+  it('makes no API requests while idle and still supports explicit refresh', async () => {
+    const fetchMock = mockApi();
+    render(<App />);
+    await screen.findByRole('heading', { name: 'Atlas' });
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /New reservation/ }),
+      ).toBeEnabled(),
+    );
+    const initialRequests = fetchMock.mock.calls.length;
+
+    vi.useFakeTimers();
+    try {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10 * 60_000);
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(initialRequests);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Refresh workspace' }));
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.length).toBeGreaterThan(initialRequests),
+    );
+    expect(screen.getByRole('heading', { name: 'Atlas' })).toBeInTheDocument();
+  });
+
   it('renders rooms and disables booking for an inactive room', async () => {
     mockApi();
     render(<App />);
