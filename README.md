@@ -5,7 +5,7 @@ You book a meeting room, arrive with your team, and someone else is already ther
 
 Roomwise handles the scheduling side of that problem: find a room, make a reservation, and check that both the space and the organizer are free. If the meeting finishes early, release the room. If it needs more time, reserve the next slot without pushing somebody else's meeting out of the way.
 
-Built by [Mervine Muganguzi](https://github.com/MerveilleDivine) for an internship technical assignment, using ASP.NET Core, EF Core InMemory, React and TypeScript.
+I built Roomwise for an internship technical assignment using ASP.NET Core, EF Core InMemory, React and TypeScript.
 
 [Try Roomwise](https://roomwise-reservations.vercel.app/) · [Architecture](docs/architecture.md) · [API](docs/api.md) · [Verification](docs/verification.md)
 
