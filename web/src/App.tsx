@@ -5,7 +5,6 @@ import {
   saveReservation,
 } from './api/client';
 import type {
-  BookingPolicy,
   BookingRequest,
   Person,
   Reservation,
@@ -50,7 +49,6 @@ const pages = {
 } as const;
 type Page = keyof typeof pages;
 type BookingForm = { reservation: Reservation | null; roomId?: string };
-const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export function App() {
   const [page, setPage] = useState<Page>('rooms');
@@ -62,7 +60,6 @@ export function App() {
   const [notice, setNotice] = useState('');
   const allRooms = useApi<Room[]>('/rooms', revision);
   const people = useApi<Person[]>('/users', revision);
-  const policy = useApi<BookingPolicy>('/booking-policy', 0);
   const refresh = () => setRevision((value) => value + 1);
   const current = pages[page];
 
@@ -248,14 +245,9 @@ export function App() {
             <UsagePage rooms={allRooms.data ?? []} revision={revision} />
           ) : null}
           <footer className="main-footer">
-            <span>Demo data resets when the server restarts.</span>
-            <span>Times in {timezone}</span>
-            {policy.data ? (
-              <span>
-                Bookings up to {policy.data.maximumDurationDays} days ·{' '}
-                {policy.data.maximumAdvanceDays} days ahead
-              </span>
-            ) : null}
+            <span>
+              © {new Date().getFullYear()} Mervine Muganguzi · Roomwise
+            </span>
           </footer>
         </div>
       </main>
