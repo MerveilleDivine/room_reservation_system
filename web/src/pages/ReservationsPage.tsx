@@ -117,10 +117,6 @@ export function ReservationsPage({
           onAction={onAction}
         />
       ) : null}
-      <p className="footnote">
-        Check-in provides a reported-use estimate. A missing check-in does not
-        prove that a room was unused.
-      </p>
     </section>
   );
 }
