@@ -344,7 +344,9 @@ test('check-in and early completion release the ongoing room', async ({
   await expect(row).toHaveCount(0);
   await page.getByRole('button', { name: 'History', exact: true }).click();
   await page.getByRole('button', { name: 'Filters', exact: true }).click();
-  await page.getByLabel('Status', { exact: true }).selectOption('Completed');
+  await page
+    .getByRole('combobox', { name: 'Status', exact: true })
+    .selectOption('Completed');
   await expect(row.getByText('Completed', { exact: true })).toBeVisible();
   const meetings = (await (
     await request.get('/api/reservations')
