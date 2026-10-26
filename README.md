@@ -1,4 +1,5 @@
 # Roomwise
+
 ### A room. A time. A booking that actually holds.
 
 You book a meeting room, arrive with your team, and someone else is already there. Lovely.
@@ -9,22 +10,23 @@ I built Roomwise for an internship technical assignment using ASP.NET Core, EF C
 
 [Try Roomwise](https://roomwise-reservations.vercel.app/) · [Architecture](docs/architecture.md) · [API](docs/api.md) · [Verification](docs/verification.md)
 
-No account needed. Choose a profile in the header and have a look.
+No account needed. Choose a profile in the header and start with what’s next.
 
 ## Give it five minutes
 
-1. Choose a person in the header to manage their own bookings, or Administrator to manage all bookings. Open Rooms. Filter by capacity, floor or equipment. Select several equipment options if you need them together. Studio is inactive, so you cannot book it.
-2. Reserve Atlas for a future time. Choose an organizer, add a title and enter the number of attendees.
-3. Try booking the same room at the same time. Then try booking that organizer into another room at the same time. Both should be rejected with a clear explanation.
-4. Open Reservations to edit or cancel a future booking.
-5. Find Engineering sync, seeded as an ongoing meeting at server startup. Check in, reserve more time, or end it early.
-6. Open People for active reservation counts and Usage for the room report.
+1. Choose a profile. Your personal upcoming reservations open first, with a greeting. Administrator sees the workspace schedule.
+2. Open Rooms, choose a start and end time, and find a space. The compact room grid shows availability for that interval. Capacity, floor and equipment filters are there when needed.
+3. Book a room. Your selected room and time carry into the form, and your organizer is filled in for a member profile.
+4. Your confirmed reservation appears at the top immediately, even if it is weeks away. The rest of the schedule stays in chronological order.
+5. Use My bookings / Everyone to change scope, and open History only when you want past or cancelled meetings. Results are paginated six at a time.
+6. Edit or cancel an upcoming booking. For a meeting in progress, check in, reserve more time or end early. Actions follow the selected profile and the meeting's current state.
+7. Open People or Usage for organizer counts and room activity.
 
-Extra time creates a separate, linked booking. It must fit the room's schedule and the organizer's schedule. Ending the original meeting early does not cancel that extra booking; cancel it separately if you no longer need it.
+Times use your device's timezone and are sent to the API as UTC instants. Room availability is a snapshot; saving repeats all conflict checks. Extra time is a separate linked booking and must fit the room and organizer schedules.
 
-All times are entered in your device's timezone and sent to the API as UTC instants. Use Refresh workspace to fetch the latest state. An unattended tab does not poll the API.
+The demo uses synthetic in-memory data. Restarting the server resets it. Seeded dates are relative to startup, so the ongoing example eventually ends.
 
-The demo uses synthetic data and in-memory storage. Restarting the server resets it. Seeded dates are relative to startup, so the ongoing example eventually ends.
+[Read the product design and research](docs/product-design.md) for the reasoning behind the flow.
 
 ## Who can change a booking?
 
@@ -60,14 +62,14 @@ Manual check-in supplies a limited estimate of use. Missing check-in does not pr
 
 ## What is included
 
-| Area | What you can do |
-| --- | --- |
-| Rooms | Browse rooms, see equipment and active status, filter by capacity, floor and multiple equipment options |
-| People | View organizers, unique IDs and active reservation counts calculated by the backend |
-| Reservations | Create, edit, cancel, check in, reserve additional time and end early |
-| Filters | Find reservations by room, organizer, status and date range |
-| Usage | Compare scheduled, reported, unconfirmed and early-released time |
-| Interface | Use desktop or mobile layouts, keyboard-accessible dialogs and clear loading, empty and error states |
+| Area         | What you can do                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------- |
+| Rooms        | Browse rooms, see equipment and active status, filter by capacity, floor and multiple equipment options |
+| People       | View organizers, unique IDs and active reservation counts calculated by the backend                     |
+| Reservations | Create, edit, cancel, check in, reserve additional time and end early                                   |
+| Filters      | Find reservations by room, organizer, status and date range                                             |
+| Usage        | Compare scheduled, reported, unconfirmed and early-released time                                        |
+| Interface    | Use desktop or mobile layouts, keyboard-accessible dialogs and clear loading, empty and error states    |
 
 All seven required booking rules are enforced in the backend:
 
@@ -119,17 +121,17 @@ In VS Code, Terminal → Run Task also provides API, web and test commands. C# D
 
 ## Where things live
 
-| Location | Responsibility |
-| --- | --- |
-| `src/RoomReservations.Api/Domain` | Entities and reservation lifecycle |
-| `src/RoomReservations.Api/Application` | Booking rules, services, usage calculations and DTO mapping |
-| `src/RoomReservations.Api/Infrastructure` | EF Core context, seed data and the write gate |
-| `src/RoomReservations.Api/Api` | HTTP endpoints and Problem Details errors |
-| `tests/RoomReservations.Api.Tests` | Backend rule, API, recovery and concurrency tests |
-| `web/src/api` | Typed API contracts and HTTP client |
-| `web/src/pages` | Page-level views and filtering |
-| `web/src/components` | Booking forms and reusable interface components |
-| `docs` | Requirements, decisions, assumptions and verification evidence |
+| Location                                  | Responsibility                                                 |
+| ----------------------------------------- | -------------------------------------------------------------- |
+| `src/RoomReservations.Api/Domain`         | Entities and reservation lifecycle                             |
+| `src/RoomReservations.Api/Application`    | Booking rules, services, usage calculations and DTO mapping    |
+| `src/RoomReservations.Api/Infrastructure` | EF Core context, seed data and the write gate                  |
+| `src/RoomReservations.Api/Api`            | HTTP endpoints and Problem Details errors                      |
+| `tests/RoomReservations.Api.Tests`        | Backend rule, API, recovery and concurrency tests              |
+| `web/src/api`                             | Typed API contracts and HTTP client                            |
+| `web/src/pages`                           | Page-level views and filtering                                 |
+| `web/src/components`                      | Booking forms and reusable interface components                |
+| `docs`                                    | Requirements, decisions, assumptions and verification evidence |
 
 One API project, one test project and one frontend keep the structure manageable for this scope. Booking decisions and report calculations stay in the backend. React handles interaction and presentation.
 
@@ -162,7 +164,7 @@ Playwright starts the real API and frontend with fresh seed data. The browser sc
 
 GitHub Actions checks both the two-server development setup and the published container.
 
-The profile-selector update passes 32 local frontend tests, TypeScript, the production build and formatting. The recorded full CI verification passed 80 backend tests and eight Chromium scenarios in each server setup. See the [verification record](docs/verification.md) for its source revision, run links and environment limits.
+The local frontend checks cover TypeScript, the production build, component tests and formatting. The recorded full CI verification passed 80 backend tests and eight Chromium scenarios in each server setup. Later runs are recorded in the verification notes. See the [verification record](docs/verification.md) for its source revision, run links and environment limits.
 
 ## Change the booking policy
 

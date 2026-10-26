@@ -55,7 +55,7 @@ The usage report labels scheduled, reported and unconfirmed minutes separately. 
 
 **Decision:** React local state and a small abortable resource hook are sufficient. Page-specific filters stay in their own page components. Shared room/user data is loaded once per refresh; independent requests start concurrently. Requests are cancelled on unmount or query changes so stale responses do not overwrite newer queries.
 
-**Tradeoff:** no persistent client cache or router yet. Reloading returns to the Rooms page. A query library or router would become useful for persistent caching, deep links or more complex navigation.
+**Tradeoff:** no persistent client cache or router yet. Reloading returns to the personal upcoming schedule. A query library or router would become useful for persistent caching, deep links or more complex navigation.
 
 **Refresh:** mutation success reloads API-derived state, and the Refresh workspace button reloads the current view on demand. There is no periodic API polling: an unattended demo tab must not keep a serverless container awake. Displayed statuses and allowed actions describe the last response. Backend checks remain authoritative if a button's availability changes between refresh and click.
 
@@ -67,7 +67,8 @@ Unexpected server errors return a generic message without exception internals. N
 
 ## ADR 7: minimal interface
 
-The interface uses a compact top navigation, white space, larger system typography, thin separators and monochrome actions. A small, locally served SVG tile provides a soft hexagon background with sparse pale blue accents. It repeats through CSS without JavaScript, animation or extra dependencies, stays sharp on all screen sizes, and is decorative rather than part of the accessibility tree. The header and dialogs retain solid white surfaces. Rooms appear as a scannable list with explicit IDs, capacity, equipment, status and booking. One locally served, 159 KB workspace photograph provides context; its CC0 source is recorded in `web/public/images/CREDITS.md`, and it is decorative rather than a photograph of a particular seeded room. Explicit image dimensions reserve layout space while it loads.
+The interface uses compact top navigation, readable system typography and a fixed, decorative hexagon pattern. The operational pages use small personal headings, compact reservation rows and a two-column room grid on desktop. Advanced filters and full room identifiers expand on demand. The large photograph hero is omitted so the first meeting or room appears sooner. The retained photograph asset's attribution is recorded in `web/public/images/CREDITS.md`.
+
 
 Reservations, people, usage and the booking dialog share the same spacing and type scale. Inline SVG icons use a consistent stroke. The modal closes before unmounting so the native dialog can restore focus to its trigger. Reduced-motion settings and a keyboard skip link are supported.
 
@@ -102,3 +103,13 @@ The browser includes `X-Roomwise-Profile` on API requests. `BookingProfile` chec
 These are deliberately selectable sample profiles, not authenticated accounts. The header is user-controlled; production authorization would require a verified identity and trusted role assignments. Those distinctions belong in the engineering documentation rather than repeated notices in the interface.
 
 React derives action visibility from the selected profile and the API's lifecycle actions. A member's organizer is filled automatically and read-only. Profile changes clear forms and stale notices; switching is disabled while a write is pending. The API remains authoritative for ownership and lifecycle checks.
+
+## ADR 12: separate schedule and availability read models
+
+The personal upcoming schedule is the application entry point. `ReservationFeedService` provides explicit upcoming/history views, stable sorting, organizer/room/status/date filtering and bounded pagination in one read snapshot. The existing unpaginated reservations endpoint keeps its array contract for integrations and tests. Upcoming includes ongoing Booked reservations; naturally completed and cancelled records appear only in History.
+
+A successful mutation returns the committed DTO to a temporary confirmation card above the feed. This gives immediate visibility without making future planning use creation order. Saving resets irrelevant filters and pagination; switching profiles or views clears confirmation state. The API hook cancels superseded requests and hides data belonging to an old query while a new one loads.
+
+`RoomAvailabilityService` evaluates a chosen interval against the same time and overlap policies as booking writes. The room finder carries its checked room and interval into the form. Every search, including unchanged dates, requests a fresh snapshot. Changing draft dates disables booking until searched. An unavailable lookup is not shown as proof that a room is booked. The write gate still revalidates conflicts when the booking is saved.
+
+See [product-design.md](product-design.md) for the researched workflows, information hierarchy and acceptance criteria.

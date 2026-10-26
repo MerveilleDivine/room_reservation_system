@@ -22,3 +22,8 @@ Object.defineProperty(HTMLDialogElement.prototype, 'close', {
     this.removeAttribute('open');
   },
 });
+
+Object.defineProperty(window, 'scrollTo', {
+  configurable: true,
+  value: vi.fn(),
+});

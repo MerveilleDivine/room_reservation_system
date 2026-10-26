@@ -106,3 +106,9 @@ Example conflict (HTTP 409):
 The frontend additionally uses `API_UNAVAILABLE` for network failure, `INVALID_RESPONSE` for unreadable success responses, `REQUEST_FAILED` if the server does not return the expected error contract, and `BOOKING_UNCONFIRMED` when a booking write and its recovery lookup cannot be confirmed.
 
 Usage errors are `INVALID_REPORT_RANGE` for missing/reversed endpoints, `REPORT_RANGE_EXCEEDED` for a range over 366 days, and `ROOM_NOT_FOUND` for an unknown room. Omitting both endpoints selects the last seven elapsed days. See [usage-report.md](usage-report.md) for the returned fields and exact metric definitions.
+
+## Task-focused read models
+
+`GET /api/reservation-feed` returns `{items,totalCount,page,pageSize}`. `view=upcoming` is the default and includes ongoing/future Booked reservations, nearest start first. `view=history` includes completed/cancelled reservations, newest start first. Equal start times use reservation ID as a stable tie-breaker. `roomId`, `organizerId`, `status`, `from` and `to` retain the existing filter semantics. Page defaults to 1, page size to 6 (maximum 50). Counts and pagination follow filtering inside one consistent read snapshot. The original `/api/reservations` array contract remains available.
+
+`GET /api/room-availability?startUtc=...&endUtc=...&organizerId=...` returns an array of `{roomId,isAvailable,reason}` for the selected interval. Organizer is optional. Invalid common time ranges return a normal 400; an unknown organizer returns 404. The same booking rules account for overlapping room and organizer bookings, cancelled intervals, early release and inactive rooms. This endpoint does not hold a room; saving always revalidates under the write gate.

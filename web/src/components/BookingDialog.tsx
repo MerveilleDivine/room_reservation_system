@@ -16,6 +16,8 @@ interface Props {
   people: Person[];
   initial: Reservation | null;
   preferredRoomId?: string;
+  preferredStartUtc?: string;
+  preferredEndUtc?: string;
   onSave: (
     request: BookingRequest,
     id: string | undefined,
@@ -30,6 +32,8 @@ export function BookingDialog({
   people,
   initial,
   preferredRoomId,
+  preferredStartUtc,
+  preferredEndUtc,
   onSave,
   onClose,
 }: Props) {
@@ -42,8 +46,9 @@ export function BookingDialog({
   const submissionKey = useSubmissionKey();
   const unconfirmed = error instanceof ApiError && error.outcomeUnknown;
   const [defaultStart] = useState(() => {
-    const start = new Date(Date.now() + 60 * 60 * 1000);
-    start.setMinutes(0, 0, 0);
+    if (preferredStartUtc) return new Date(preferredStartUtc);
+    const start = new Date(Date.now() + 30 * 60 * 1000);
+    start.setMinutes(Math.floor(start.getMinutes() / 15) * 15, 0, 0);
     return start;
   });
 
@@ -232,7 +237,9 @@ export function BookingDialog({
                 defaultValue={toLocalInput(
                   initial
                     ? new Date(initial.endUtc)
-                    : new Date(defaultStart.getTime() + 60 * 60 * 1000),
+                    : preferredEndUtc
+                      ? new Date(preferredEndUtc)
+                      : new Date(defaultStart.getTime() + 30 * 60 * 1000),
                 )}
               />
             </label>

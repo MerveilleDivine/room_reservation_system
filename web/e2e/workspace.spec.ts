@@ -79,10 +79,13 @@ test('create, reload, edit and cancel a booking through the real API', async ({
   let createdId: string | undefined;
   try {
     await page.goto('/');
+    await page.getByRole('button', { name: 'Rooms', exact: true }).click();
     await expect(
       page.getByRole('heading', { name: 'Atlas', exact: true }),
     ).toBeVisible();
+    await page.getByLabel('Room details for Atlas').click();
     await expect(page.getByText('ID: ' + atlas, { exact: true })).toBeVisible();
+    await page.getByLabel('Room details for Atlas').click();
     await page.screenshot({
       path: info.outputPath('rooms-desktop.png'),
       fullPage: true,
@@ -140,6 +143,8 @@ test('create, reload, edit and cancel a booking through the real API', async ({
     await updatedRow
       .getByRole('button', { name: 'Cancel', exact: true })
       .click();
+    await expect(updatedRow).toHaveCount(0);
+    await page.getByRole('button', { name: 'History', exact: true }).click();
     await expect(
       updatedRow.getByText('Cancelled', { exact: true }),
     ).toBeVisible();
@@ -336,6 +341,8 @@ test('check-in and early completion release the ongoing room', async ({
   await expect(row.getByText(/Checked in at/)).toBeVisible();
   page.once('dialog', (dialog) => dialog.accept());
   await row.getByRole('button', { name: 'End early', exact: true }).click();
+  await expect(row).toHaveCount(0);
+  await page.getByRole('button', { name: 'History', exact: true }).click();
   await expect(row.getByText('Completed', { exact: true })).toBeVisible();
   const meetings = (await (
     await request.get('/api/reservations')
@@ -398,6 +405,13 @@ test('mobile layout and booking dialog support keyboard dismissal', async ({
   page.on('pageerror', (error) => errors.push(error.message));
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
+  await expect(
+    page.getByRole('heading', { name: 'Workspace schedule', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Roadmap review', exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole('button', { name: 'Rooms', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Atlas', exact: true }),
   ).toBeVisible();
@@ -477,6 +491,7 @@ test('profile switching keeps other bookings read-only and preserves the selecte
   try {
     await page.goto('/');
     await page.getByLabel('Current profile').selectOption(alex);
+    await page.getByRole('button', { name: 'Everyone', exact: true }).click();
     await page
       .getByRole('button', { name: 'Reservations', exact: true })
       .click();
@@ -517,5 +532,127 @@ test('profile switching keeps other bookings read-only and preserves the selecte
     ).toBeVisible();
   } finally {
     await request.post('/api/reservations/' + reservation.id + '/cancel');
+  }
+});
+
+test('a new booking is visible immediately after history or pagination, even far in the future', async ({
+  page,
+  request,
+}) => {
+  const createdIds: string[] = [];
+  try {
+    for (let index = 0; index < 7; index++) {
+      const response = await request.post('/api/reservations', {
+        data: { ...booking(15 + index), title: `Schedule page ${index}` },
+      });
+      expect(response.status()).toBe(201);
+      createdIds.push(((await response.json()) as Reservation).id);
+    }
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await expect(page.getByText('Page 2 of 2', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'History', exact: true }).click();
+    await page
+      .getByRole('button', { name: 'New reservation', exact: true })
+      .click();
+    const value = { ...booking(60), title: 'Visible without hunting' };
+    await fillBooking(page, value);
+    const response = page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/api/reservations') &&
+        response.request().method() === 'POST',
+    );
+    await page
+      .getByRole('button', { name: 'Create reservation', exact: true })
+      .click();
+    const created = (await (await response).json()) as Reservation;
+    createdIds.push(created.id);
+    await expect(
+      page.getByRole('heading', { name: 'You’re booked', exact: true }),
+    ).toBeFocused();
+    const title = page.getByRole('heading', { name: value.title, exact: true });
+    await expect(title).toBeVisible();
+    expect((await title.boundingBox())!.y).toBeLessThan(500);
+    await expect(title).toHaveCount(1);
+    await expect(
+      page.getByRole('button', { name: 'Upcoming', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await expect(
+      page.getByRole('heading', { name: 'Roadmap review', exact: true }),
+    ).toHaveCount(0);
+  } finally {
+    for (const id of createdIds)
+      await request.post(`/api/reservations/${id}/cancel`);
+  }
+});
+
+test('room search checks the selected time and carries it into the booking', async ({
+  page,
+  request,
+}) => {
+  const blocker = { ...booking(40), title: 'Reserved room search slot' };
+  const setup = await request.post('/api/reservations', { data: blocker });
+  expect(setup.status()).toBe(201);
+  const createdIds = [((await setup.json()) as Reservation).id];
+  try {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Rooms', exact: true }).click();
+    const local = await page.evaluate(
+      ({ start, end }) => {
+        function input(value: string) {
+          const date = new Date(value);
+          const pad = (n: number) => String(n).padStart(2, '0');
+          return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+        }
+        return { start: input(start), end: input(end) };
+      },
+      { start: blocker.startUtc, end: blocker.endUtc },
+    );
+    await page.getByLabel('Find rooms from', { exact: true }).fill(local.start);
+    await page.getByLabel('Find rooms until', { exact: true }).fill(local.end);
+    await page
+      .getByRole('button', { name: 'Find a room', exact: true })
+      .click();
+    const atlasRow = page.getByRole('article').filter({
+      has: page.getByRole('heading', { name: 'Atlas', exact: true }),
+    });
+    await expect(
+      atlasRow.getByRole('button', { name: 'Unavailable', exact: true }),
+    ).toBeDisabled();
+    const birchRow = page.getByRole('article').filter({
+      has: page.getByRole('heading', { name: 'Birch', exact: true }),
+    });
+    await birchRow
+      .getByRole('button', { name: 'Book this room', exact: true })
+      .click();
+    await expect(page.getByLabel('Starts', { exact: true })).toHaveValue(
+      local.start,
+    );
+    await expect(page.getByLabel('Ends', { exact: true })).toHaveValue(
+      local.end,
+    );
+    await page.getByLabel('Meeting title').fill('Room search handoff');
+    await page
+      .getByRole('combobox', { name: 'Organizer', exact: true })
+      .selectOption(emilija);
+    const response = page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/api/reservations') &&
+        response.request().method() === 'POST',
+    );
+    await page
+      .getByRole('button', { name: 'Create reservation', exact: true })
+      .click();
+    const created = (await (await response).json()) as Reservation;
+    createdIds.push(created.id);
+    expect(created.roomId).toBe(birch);
+    expect(Date.parse(created.startUtc)).toBe(Date.parse(blocker.startUtc));
+    expect(Date.parse(created.endUtc)).toBe(Date.parse(blocker.endUtc));
+    await expect(
+      page.getByRole('heading', { name: 'Room search handoff', exact: true }),
+    ).toBeVisible();
+  } finally {
+    for (const id of createdIds)
+      await request.post(`/api/reservations/${id}/cancel`);
   }
 });

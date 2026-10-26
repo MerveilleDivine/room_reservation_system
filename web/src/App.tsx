@@ -16,6 +16,7 @@ import { ContinuationDialog } from './components/ContinuationDialog';
 import { ErrorNotice } from './components/Feedback';
 import { Icon } from './components/Icon';
 import { RoomsPage } from './pages/RoomsPage';
+import type { SavedBooking } from './pages/ReservationsPage';
 import { ReservationsPage } from './pages/ReservationsPage';
 import { UsersPage } from './pages/UsersPage';
 import { UsagePage } from './pages/UsagePage';
@@ -23,17 +24,17 @@ import { useApi } from './hooks/useApi';
 import { canManage, readProfile, storeProfile } from './lib/profile';
 
 const pages = {
-  rooms: {
-    label: 'Rooms',
-    icon: 'rooms',
-    title: 'Find your room.',
-    description: 'Choose a space for your next meeting.',
-  },
   reservations: {
     label: 'Reservations',
     icon: 'calendar',
     title: 'Reservations',
     description: 'Manage your meetings and room bookings.',
+  },
+  rooms: {
+    label: 'Rooms',
+    icon: 'rooms',
+    title: 'Find your room.',
+    description: 'Choose a space for your next meeting.',
   },
   users: {
     label: 'People',
@@ -49,21 +50,42 @@ const pages = {
   },
 } as const;
 type Page = keyof typeof pages;
-type BookingForm = { reservation: Reservation | null; roomId?: string };
+type BookingForm = {
+  reservation: Reservation | null;
+  roomId?: string;
+  startUtc?: string;
+  endUtc?: string;
+};
 
 export function App() {
   const [profile, setProfile] = useState(readProfile);
-  const [page, setPage] = useState<Page>('rooms');
+  const [page, setPage] = useState<Page>('reservations');
   const [revision, setRevision] = useState(0);
   const [form, setForm] = useState<BookingForm | null>(null);
   const [continuation, setContinuation] = useState<Reservation | null>(null);
   const [pending, setPending] = useState(false);
   const [actionError, setActionError] = useState<Error | null>(null);
   const [notice, setNotice] = useState('');
+  const [saved, setSaved] = useState<SavedBooking | null>(null);
+  const [scheduleVersion, setScheduleVersion] = useState(0);
   const allRooms = useApi<Room[]>('/rooms', revision);
   const people = useApi<Person[]>('/users', revision);
   const refresh = () => setRevision((value) => value + 1);
   const current = pages[page];
+  const person = people.data?.find((item) => item.id === profile);
+  const displayName = profile === 'admin' ? 'Administrator' : person?.firstName;
+  const [today] = useState(() => new Date());
+  const dateLabel = new Intl.DateTimeFormat(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  }).format(today);
+  const greeting =
+    today.getHours() < 12
+      ? 'Good morning'
+      : today.getHours() < 18
+        ? 'Good afternoon'
+        : 'Good evening';
 
   async function save(
     request: BookingRequest,
@@ -72,10 +94,12 @@ export function App() {
   ) {
     setPending(true);
     try {
-      await saveReservation(request, id, submissionKey);
+      const reservation = await saveReservation(request, id, submissionKey);
+      setSaved({ reservation, label: id ? 'Changes saved' : 'You’re booked' });
+      setScheduleVersion((value) => value + 1);
       setForm(null);
       setPage('reservations');
-      setNotice(id ? 'Changes saved.' : 'Reservation confirmed.');
+      setNotice('');
       refresh();
     } finally {
       setPending(false);
@@ -89,9 +113,16 @@ export function App() {
   ) {
     setPending(true);
     try {
-      await reserveAdditionalTime(id, additionalMinutes, submissionKey);
+      const reservation = await reserveAdditionalTime(
+        id,
+        additionalMinutes,
+        submissionKey,
+      );
+      setSaved({ reservation, label: 'Extra time reserved' });
+      setScheduleVersion((value) => value + 1);
+      setPage('reservations');
       setContinuation(null);
-      setNotice('Extra time reserved.');
+      setNotice('');
       refresh();
     } finally {
       setPending(false);
@@ -125,6 +156,7 @@ export function App() {
     setPending(true);
     try {
       await reservationAction(reservation.id, action);
+      setSaved(null);
       setNotice(
         action === 'check-in'
           ? 'Checked in.'
@@ -172,6 +204,8 @@ export function App() {
                 aria-current={page === item ? 'page' : undefined}
                 onClick={() => {
                   setPage(item);
+                  setSaved(null);
+                  window.scrollTo({ top: 0 });
                   setNotice('');
                   setActionError(null);
                 }}
@@ -191,6 +225,8 @@ export function App() {
                   const next = event.target.value;
                   storeProfile(next);
                   setProfile(next);
+                  setSaved(null);
+                  setPage('reservations');
                   setForm(null);
                   setContinuation(null);
                   setNotice('');
@@ -211,7 +247,10 @@ export function App() {
               className="icon-button"
               aria-label="Refresh workspace"
               title="Refresh"
-              onClick={refresh}
+              onClick={() => {
+                setSaved(null);
+                refresh();
+              }}
             >
               <Icon name="refresh" size={17} />
             </button>
@@ -224,34 +263,31 @@ export function App() {
               }}
             >
               <Icon name="plus" size={16} />
-              New reservation
+              <span className="booking-button-label">New reservation</span>
             </button>
           </div>
         </div>
       </header>
       <main id="main" tabIndex={-1} aria-busy={pending}>
         <div className="main-content">
-          <section
-            className={
-              page === 'rooms' ? 'page-intro with-visual' : 'page-intro'
-            }
-          >
+          <section className="page-intro">
             <div className="intro-text">
-              <p className="eyebrow">Shared workspace</p>
-              <h1>{current.title}</h1>
-              <p className="intro-copy">{current.description}</p>
+              <p className="eyebrow">
+                {page === 'reservations' ? dateLabel : 'Your workspace'}
+              </p>
+              <h1>
+                {page === 'reservations'
+                  ? `${greeting}${displayName ? `, ${displayName}` : ''}.`
+                  : current.title}
+              </h1>
+              <p className="intro-copy">
+                {page === 'reservations'
+                  ? profile === 'admin'
+                    ? 'A clear view of what’s next across the workspace.'
+                    : 'Your meetings, without the back and forth.'
+                  : current.description}
+              </p>
             </div>
-            {page === 'rooms' ? (
-              <figure className="intro-visual">
-                <img
-                  src="/images/workspace.jpg"
-                  alt=""
-                  width="1280"
-                  height="853"
-                  fetchPriority="high"
-                />
-              </figure>
-            ) : null}
           </section>
           {notice ? (
             <div className="notice success" role="status">
@@ -275,11 +311,22 @@ export function App() {
               allRooms={allRooms}
               revision={revision}
               canBook={canBook}
-              onBook={(roomId) => setForm({ reservation: null, roomId })}
+              profile={profile}
+              onBook={(roomId, startUtc, endUtc) =>
+                setForm({ reservation: null, roomId, startUtc, endUtc })
+              }
             />
           ) : null}
           {page === 'reservations' ? (
             <ReservationsPage
+              key={`${profile}:${scheduleVersion}`}
+              saved={saved}
+              onDismissSaved={() => setSaved(null)}
+              onBook={() => setForm({ reservation: null })}
+              onRefresh={() => {
+                setSaved(null);
+                refresh();
+              }}
               profile={profile}
               rooms={allRooms.data ?? []}
               people={people.data ?? []}
@@ -308,6 +355,8 @@ export function App() {
           people={people.data}
           initial={form.reservation}
           preferredRoomId={form.roomId}
+          preferredStartUtc={form.startUtc}
+          preferredEndUtc={form.endUtc}
           onSave={save}
           onClose={() => setForm(null)}
         />

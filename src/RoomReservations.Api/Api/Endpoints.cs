@@ -17,6 +17,15 @@ public static class Endpoints
             DateTimeOffset? from, DateTimeOffset? to, Guid? roomId,
             UsageReportService service, CancellationToken cancellationToken) =>
             await service.ReadAsync(from, to, roomId, cancellationToken));
+        app.MapGet("/api/reservation-feed", async (
+            string? view, Guid? roomId, Guid? organizerId, string? status, DateTimeOffset? from, DateTimeOffset? to,
+            int? page, int? pageSize, ReservationFeedService service, CancellationToken cancellationToken) =>
+            await service.ReadAsync(new ReservationFeedQuery(view, roomId, organizerId, status, from, to,
+                page ?? 1, pageSize ?? 6), cancellationToken));
+        app.MapGet("/api/room-availability", async (
+            DateTimeOffset startUtc, DateTimeOffset endUtc, Guid? organizerId,
+            RoomAvailabilityService service, CancellationToken cancellationToken) =>
+            await service.ReadAsync(startUtc, endUtc, organizerId, cancellationToken));
 
         app.MapGet("/api/rooms", async (
             int? minimumCapacity, string? floor, string? equipment,

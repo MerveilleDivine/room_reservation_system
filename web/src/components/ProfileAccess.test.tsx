@@ -13,24 +13,22 @@ const other = {
 };
 
 function mockWorkspace() {
-  const fetchMock = vi.fn(
-    async (url: string) =>
-      new Response(
-        JSON.stringify(
-          url.startsWith('/api/rooms')
-            ? rooms
-            : url.startsWith('/api/users')
-              ? [...people, other]
-              : [
-                  {
-                    ...reservation,
-                    organizerId: other.id,
-                    organizerName: 'Emilija Petrauskaite',
-                  },
-                ],
-        ),
-      ),
-  );
+  const fetchMock = vi.fn(async (url: string) => {
+    const otherBooking = {
+      ...reservation,
+      organizerId: other.id,
+      organizerName: 'Emilija Petrauskaite',
+    };
+    const parameters = new URL(url, 'http://roomwise.test').searchParams;
+    const items =
+      parameters.get('organizerId') === people[0]!.id ? [] : [otherBooking];
+    const data = url.startsWith('/api/rooms')
+      ? rooms
+      : url.startsWith('/api/users')
+        ? [...people, other]
+        : { items, totalCount: items.length, page: 1, pageSize: 6 };
+    return new Response(JSON.stringify(data));
+  });
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
 }
@@ -40,8 +38,12 @@ describe('profile ownership', () => {
     mockWorkspace();
     render(<App />);
     const user = userEvent.setup();
-    await screen.findByRole('heading', { name: 'Atlas' });
-    await user.click(screen.getByRole('button', { name: 'Reservations' }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'New reservation' }),
+      ).toBeEnabled(),
+    );
+    await user.click(screen.getByRole('button', { name: 'Everyone' }));
     await screen.findByRole('heading', { name: 'Planning' });
     expect(
       screen.queryByRole('button', { name: 'Edit' }),
@@ -65,7 +67,11 @@ describe('profile ownership', () => {
     mockWorkspace();
     render(<App />);
     const user = userEvent.setup();
-    await screen.findByRole('heading', { name: 'Atlas' });
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'New reservation' }),
+      ).toBeEnabled(),
+    );
     await user.click(screen.getByRole('button', { name: 'New reservation' }));
     expect(screen.getByLabelText('Organizer')).toHaveValue('Alex Morgan');
     expect(screen.getByLabelText('Organizer')).toHaveAttribute('readonly');
@@ -85,7 +91,11 @@ describe('profile ownership', () => {
     storeProfile(other.id);
     const fetchMock = mockWorkspace();
     render(<App />);
-    await screen.findByRole('heading', { name: 'Atlas' });
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'New reservation' }),
+      ).toBeEnabled(),
+    );
     expect(screen.getByLabelText('Current profile')).toHaveValue(other.id);
     for (const call of fetchMock.mock.calls) {
       expect(

@@ -1,4 +1,5 @@
 const paths = {
+  filter: <path d="M4 6h16M7 12h10M10 18h4" />,
   check: <path d="m5 12 4 4L19 6" />,
   door: (
     <>

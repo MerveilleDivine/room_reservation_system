@@ -20,6 +20,8 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<BookingProfile>();
 builder.Services.AddScoped<ReservationService>();
 builder.Services.AddScoped<UsageReportService>();
+builder.Services.AddScoped<ReservationFeedService>();
+builder.Services.AddScoped<RoomAvailabilityService>();
 
 var app = builder.Build();
 app.UseExceptionHandler();

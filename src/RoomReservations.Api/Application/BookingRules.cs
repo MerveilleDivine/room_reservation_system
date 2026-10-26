@@ -18,17 +18,7 @@ public sealed class BookingRules(IOptions<BookingOptions> options)
         if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > 120)
             throw new BookingException("INVALID_TITLE", "Enter a meeting title between 1 and 120 characters.");
 
-        if (request.EndUtc <= request.StartUtc)
-            throw new BookingException("INVALID_TIME_RANGE", "The end must be after the start.");
-
-        if (request.StartUtc <= now)
-            throw new BookingException("START_NOT_FUTURE", "Choose a start time in the future.");
-
-        if (request.EndUtc - request.StartUtc > MaximumDuration)
-            throw new BookingException("DURATION_EXCEEDED", $"A reservation cannot exceed {options.Value.MaximumDurationDays} days.");
-
-        if (request.StartUtc > now.AddDays(options.Value.MaximumAdvanceDays))
-            throw new BookingException("ADVANCE_WINDOW_EXCEEDED", $"Book no more than {options.Value.MaximumAdvanceDays} days in advance.");
+        ValidateTimeRange(request.StartUtc, request.EndUtc, now);
 
         if (request.Attendees < 1)
             throw new BookingException("INVALID_ATTENDEES", "At least one attendee is required.");
@@ -50,5 +40,17 @@ public sealed class BookingRules(IOptions<BookingOptions> options)
 
         if (overlapping.Any(existing => existing.OrganizerId == request.OrganizerId))
             throw new BookingException("ORGANIZER_OVERLAP", "The organizer already has a meeting during that time.", 409);
+    }
+
+    public void ValidateTimeRange(DateTimeOffset startUtc, DateTimeOffset endUtc, DateTimeOffset now)
+    {
+        if (endUtc <= startUtc)
+            throw new BookingException("INVALID_TIME_RANGE", "The end must be after the start.");
+        if (startUtc <= now)
+            throw new BookingException("START_NOT_FUTURE", "Choose a start time in the future.");
+        if (endUtc - startUtc > MaximumDuration)
+            throw new BookingException("DURATION_EXCEEDED", $"A reservation cannot exceed {options.Value.MaximumDurationDays} days.");
+        if (startUtc > now.AddDays(options.Value.MaximumAdvanceDays))
+            throw new BookingException("ADVANCE_WINDOW_EXCEEDED", $"Book no more than {options.Value.MaximumAdvanceDays} days in advance.");
     }
 }

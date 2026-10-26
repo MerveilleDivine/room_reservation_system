@@ -41,6 +41,12 @@ export interface Reservation {
   allowedActions: ReservationAction[];
 }
 
+export interface RoomAvailability {
+  roomId: string;
+  isAvailable: boolean;
+  reason: string | null;
+}
+
 export interface BookingRequest {
   roomId: string;
   organizerId: string;
@@ -48,6 +54,13 @@ export interface BookingRequest {
   startUtc: string;
   endUtc: string;
   attendees: number;
+}
+
+export interface ReservationFeed {
+  items: Reservation[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface BookingPolicy {
