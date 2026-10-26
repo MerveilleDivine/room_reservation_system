@@ -2,6 +2,22 @@
 
 Latest full verification: 26 October 2026.
 
+## Personal schedule and room finder
+
+[Checks run 40376897444](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/40376897444) passed for application/test source `87c10ef9445f553d81124c29946108cf7356a4dd`.
+
+| Check | Result |
+| --- | --- |
+| Backend Release build and tests | 117 passed, 0 failed |
+| Frontend | Strict TypeScript, production build, 40 tests and formatting passed |
+| Development browser | All 11 Chromium scenarios passed |
+| Published container | All 11 Chromium scenarios passed |
+| Visual review | Compact desktop room grid, mobile room finder and personal home screen reviewed |
+
+The schedule opens on personal upcoming bookings with a greeting. History is explicit, results are paginated, and a new booking is shown immediately above the chronological feed with keyboard focus on confirmation. Room search checks the selected interval and carries it into the booking form. The browser scenarios cover creation from history/page two, far-future confirmation visibility, history after early completion, room conflicts during search and the room/time handoff to saving. Unit tests also cover stale-query suppression and repeated availability checks for unchanged dates.
+
+The release documentation update changes no application or test code. See [product-design.md](product-design.md) for research and interaction decisions.
+
 ## Profile ownership and interface update
 
 [Checks run 40371881745](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/40371881745) passed for source commit `359f641524ff481573f4f21b2e209b5269466395`: backend restore/build/tests, strict TypeScript, production frontend build, 32 frontend tests, formatting and all nine Chromium scenarios in both development and published-container setups.

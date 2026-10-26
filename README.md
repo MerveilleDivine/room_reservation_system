@@ -164,7 +164,7 @@ Playwright starts the real API and frontend with fresh seed data. The browser sc
 
 GitHub Actions checks both the two-server development setup and the published container.
 
-The local frontend checks cover TypeScript, the production build, component tests and formatting. The recorded full CI verification passed 80 backend tests and eight Chromium scenarios in each server setup. Later runs are recorded in the verification notes. See the [verification record](docs/verification.md) for its source revision, run links and environment limits.
+The current verified source passes 117 backend tests, 40 frontend tests and all 11 Chromium scenarios in each server setup. See the [verification record](docs/verification.md) for the source revision, run links and environment limits.
 
 ## Change the booking policy
 
