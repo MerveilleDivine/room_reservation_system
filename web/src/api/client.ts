@@ -1,4 +1,5 @@
 import type { BookingRequest, Reservation } from './contracts';
+import { readProfile } from '../lib/profile';
 
 export class ApiError extends Error {
   readonly code: string;
@@ -24,6 +25,8 @@ export async function request<T>(
     !['GET', 'HEAD'].includes(options.method.toUpperCase());
   const headers = new Headers(options?.headers);
   headers.set('Content-Type', 'application/json');
+  if (!headers.has('X-Roomwise-Profile'))
+    headers.set('X-Roomwise-Profile', readProfile());
   let response: Response;
   try {
     response = await fetch(`/api${path}`, {
@@ -34,9 +37,7 @@ export async function request<T>(
     if (error instanceof DOMException && error.name === 'AbortError')
       throw error;
     throw new ApiError(
-      import.meta.env.DEV
-        ? 'Cannot reach the API. Start the ASP.NET server on port 5080.'
-        : 'Cannot reach the booking service. Refresh the page or try again shortly.',
+      'Cannot reach the booking service. Refresh the page or try again shortly.',
       'API_UNAVAILABLE',
       isWrite,
     );

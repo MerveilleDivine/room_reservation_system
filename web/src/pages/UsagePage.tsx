@@ -169,48 +169,6 @@ export function UsagePage({
               </tbody>
             </table>
           </div>
-          <p className="report-note">{report.data.observationNote}</p>
-          <details className="metric-definitions">
-            <summary>How these numbers are measured</summary>
-            <dl>
-              <div>
-                <dt>Scheduled</dt>
-                <dd>
-                  Time covered by non-cancelled bookings in the selected range.
-                  Overlapping room intervals are counted once.
-                </dd>
-              </div>
-              <div>
-                <dt>Reported use</dt>
-                <dd>
-                  An estimate from manual check-in to the earlier of scheduled
-                  end, early completion or the report snapshot. It cannot
-                  establish continuous presence or late departure.
-                </dd>
-              </div>
-              <div>
-                <dt>Unconfirmed</dt>
-                <dd>
-                  Elapsed reserved time without a manual check-in. It does not
-                  establish that a room was empty.
-                </dd>
-              </div>
-              <div>
-                <dt>Freed</dt>
-                <dd>
-                  Time released by early completion that has not been covered by
-                  another reservation.
-                </dd>
-              </div>
-              <div>
-                <dt>Reported share</dt>
-                <dd>
-                  Reported minutes divided by elapsed reserved minutes. Future
-                  time is excluded. A dash means no elapsed reservation time.
-                </dd>
-              </div>
-            </dl>
-          </details>
         </>
       ) : null}
     </section>

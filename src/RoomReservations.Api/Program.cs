@@ -16,6 +16,8 @@ builder.Services.AddDbContext<ReservationsDbContext>(options => options.UseInMem
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<BookingWriteGate>();
 builder.Services.AddScoped<BookingRules>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<BookingProfile>();
 builder.Services.AddScoped<ReservationService>();
 builder.Services.AddScoped<UsageReportService>();
 

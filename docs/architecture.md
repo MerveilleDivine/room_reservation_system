@@ -92,3 +92,13 @@ The API boundary parses the HTTP header; the application service owns receipt ma
 The guarantee is limited to one in-memory server lifetime. Restart, scale-down or a second instance can lose or miss receipts. This is a recoverable demo workflow, not a claim of globally exactly-once delivery. A production database would need a unique request key, durable receipt retention and a transactional booking/concurrency strategy.
 
 The browser recovery test forwards a POST to the actual ASP.NET API, lets it commit, then aborts only its response to simulate a lost acknowledgement. The subsequent receipt lookup and reservation reads use the real backend. Other browser scenarios do not intercept traffic.
+
+## ADR 11: selectable profiles and reservation ownership
+
+A small header selector switches between the seeded people and Administrator. Members can view all reservations but create only for themselves and manage only their own bookings. Administrator can manage every organizer. The selected profile is stored per tab in session storage, with an in-memory fallback if storage is unavailable.
+
+The browser includes `X-Roomwise-Profile` on API requests. `BookingProfile` checks the selected person against the existing in-memory people, while `ReservationService` checks ownership under its write gate. Edits check both the existing owner and requested organizer, preventing reassignment as a workaround. Request recovery and replay check the reservation's current owner. Missing or invalid profiles cannot make changes.
+
+These are deliberately selectable sample profiles, not authenticated accounts. The header is user-controlled; production authorization would require a verified identity and trusted role assignments. Those distinctions belong in the engineering documentation rather than repeated notices in the interface.
+
+React derives action visibility from the selected profile and the API's lifecycle actions. A member's organizer is filled automatically and read-only. Profile changes clear forms and stale notices; switching is disabled while a write is pending. The API remains authoritative for ownership and lifecycle checks.

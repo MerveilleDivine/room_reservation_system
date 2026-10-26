@@ -113,18 +113,11 @@ export function ContinuationDialog({ reservation, onSave, onClose }: Props) {
           </select>
         </label>
         <p className="form-note">
-          We’ll create a linked booking with the same room, organizer and
-          attendees, if everyone’s schedule allows it. Reserve it before this
-          meeting’s scheduled end. Existing bookings take priority.
-        </p>
-        <p className="form-note">
-          The extra booking has its own check-in and cancellation. Ending this
-          meeting early keeps the extra booking reserved.
+          Extra time is reserved separately. Cancel it if you no longer need it.
         </p>
         {error ? (
           <div className="notice error" role="alert">
             {error.message}
-            {error instanceof ApiError ? <code>{error.code}</code> : null}
           </div>
         ) : null}
         <div className="dialog-actions">

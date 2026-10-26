@@ -20,6 +20,7 @@ import { ReservationsPage } from './pages/ReservationsPage';
 import { UsersPage } from './pages/UsersPage';
 import { UsagePage } from './pages/UsagePage';
 import { useApi } from './hooks/useApi';
+import { canManage, readProfile, storeProfile } from './lib/profile';
 
 const pages = {
   rooms: {
@@ -44,13 +45,14 @@ const pages = {
     label: 'Usage',
     icon: 'chart',
     title: 'Room usage',
-    description: 'Compare booked time with check-in-based estimates.',
+    description: 'See how your meeting spaces are being used.',
   },
 } as const;
 type Page = keyof typeof pages;
 type BookingForm = { reservation: Reservation | null; roomId?: string };
 
 export function App() {
+  const [profile, setProfile] = useState(readProfile);
   const [page, setPage] = useState<Page>('rooms');
   const [revision, setRevision] = useState(0);
   const [form, setForm] = useState<BookingForm | null>(null);
@@ -68,11 +70,16 @@ export function App() {
     id: string | undefined,
     submissionKey: string,
   ) {
-    await saveReservation(request, id, submissionKey);
-    setForm(null);
-    setPage('reservations');
-    setNotice(id ? 'Reservation updated.' : 'Reservation created.');
-    refresh();
+    setPending(true);
+    try {
+      await saveReservation(request, id, submissionKey);
+      setForm(null);
+      setPage('reservations');
+      setNotice(id ? 'Changes saved.' : 'Reservation confirmed.');
+      refresh();
+    } finally {
+      setPending(false);
+    }
   }
 
   async function saveContinuation(
@@ -80,16 +87,22 @@ export function App() {
     additionalMinutes: number,
     submissionKey: string,
   ) {
-    await reserveAdditionalTime(id, additionalMinutes, submissionKey);
-    setContinuation(null);
-    setNotice('Extra time reserved as a linked booking.');
-    refresh();
+    setPending(true);
+    try {
+      await reserveAdditionalTime(id, additionalMinutes, submissionKey);
+      setContinuation(null);
+      setNotice('Extra time reserved.');
+      refresh();
+    } finally {
+      setPending(false);
+    }
   }
 
   async function handleAction(
     reservation: Reservation,
     action: ReservationAction,
   ) {
+    if (!canManage(profile, reservation.organizerId)) return;
     setActionError(null);
     setNotice('');
     if (action === 'edit') {
@@ -130,7 +143,12 @@ export function App() {
   }
 
   const canBook = Boolean(
-    allRooms.data && people.data && !allRooms.error && !people.error,
+    allRooms.data &&
+      people.data &&
+      !allRooms.error &&
+      !people.error &&
+      (profile === 'admin' ||
+        people.data.some((person) => person.id === profile)),
   );
 
   return (
@@ -163,6 +181,32 @@ export function App() {
             ))}
           </nav>
           <div className="header-actions">
+            <label className="profile-switcher">
+              <span className="sr-only">Current profile</span>
+              <select
+                aria-label="Current profile"
+                value={profile}
+                disabled={pending || !people.data}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  storeProfile(next);
+                  setProfile(next);
+                  setForm(null);
+                  setContinuation(null);
+                  setNotice('');
+                  setActionError(null);
+                  refresh();
+                }}
+              >
+                {!people.data ? <option value={profile}>Profile</option> : null}
+                {people.data?.map((person) => (
+                  <option key={person.id} value={person.id}>
+                    {person.firstName} {person.lastName}
+                  </option>
+                ))}
+                <option value="admin">Administrator</option>
+              </select>
+            </label>
             <button
               className="icon-button"
               aria-label="Refresh workspace"
@@ -185,7 +229,7 @@ export function App() {
           </div>
         </div>
       </header>
-      <main id="main" tabIndex={-1}>
+      <main id="main" tabIndex={-1} aria-busy={pending}>
         <div className="main-content">
           <section
             className={
@@ -206,15 +250,20 @@ export function App() {
                   height="853"
                   fetchPriority="high"
                 />
-                <figcaption>
-                  Illustrative workspace <span>Photograph by Breather</span>
-                </figcaption>
               </figure>
             ) : null}
           </section>
           {notice ? (
             <div className="notice success" role="status">
-              {notice}
+              <Icon name="check" size={18} />
+              <span>{notice}</span>
+              <button
+                className="icon-button"
+                aria-label="Dismiss confirmation"
+                onClick={() => setNotice('')}
+              >
+                <Icon name="close" size={15} />
+              </button>
             </div>
           ) : null}
           {actionError ? <ErrorNotice error={actionError} /> : null}
@@ -231,6 +280,7 @@ export function App() {
           ) : null}
           {page === 'reservations' ? (
             <ReservationsPage
+              profile={profile}
               rooms={allRooms.data ?? []}
               people={people.data ?? []}
               revision={revision}
@@ -253,6 +303,7 @@ export function App() {
       </main>
       {form && allRooms.data && people.data ? (
         <BookingDialog
+          organizerId={profile === 'admin' ? undefined : profile}
           rooms={allRooms.data}
           people={people.data}
           initial={form.reservation}

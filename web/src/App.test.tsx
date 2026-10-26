@@ -100,7 +100,9 @@ describe('workspace', () => {
   it('shows a useful failure state and blocks a new booking when the API fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Offline')));
     render(<App />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('5080');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Cannot reach the booking service',
+    );
     expect(
       screen.getByRole('button', { name: /New reservation/ }),
     ).toBeDisabled();

@@ -70,7 +70,9 @@ describe('reservation form', () => {
     await user.click(
       screen.getByRole('button', { name: 'Create reservation' }),
     );
-    expect(await screen.findByRole('alert')).toHaveTextContent('ROOM_OVERLAP');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'already booked',
+    );
     expect(screen.getByLabelText('Meeting title')).toHaveValue(
       'Keep this title',
     );
@@ -116,7 +118,7 @@ describe('reservation form', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'BOOKING_UNCONFIRMED',
+      'Confirmation was lost',
     );
     expect(screen.getByLabelText('Meeting title')).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Retry reservation' }));

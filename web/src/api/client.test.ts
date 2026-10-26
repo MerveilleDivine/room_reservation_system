@@ -34,7 +34,7 @@ describe('API boundary', () => {
     );
     await expect(request('/rooms')).rejects.toMatchObject({
       code: 'API_UNAVAILABLE',
-      message: expect.stringContaining('5080'),
+      message: expect.stringContaining('Cannot reach the booking service'),
     });
   });
 

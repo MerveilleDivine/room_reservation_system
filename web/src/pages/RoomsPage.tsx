@@ -37,6 +37,18 @@ export function RoomsPage({
     <section aria-labelledby="rooms-heading">
       <div className="section-heading">
         <h2 id="rooms-heading">All rooms</h2>
+        {query.size ? (
+          <button
+            className="text-button"
+            onClick={() => {
+              setCapacity('');
+              setFloor('');
+              setEquipment([]);
+            }}
+          >
+            Clear filters
+          </button>
+        ) : null}
       </div>
       <div className="filters room-filters">
         <label>
@@ -100,10 +112,6 @@ export function RoomsPage({
       ) : rooms.data ? (
         <RoomList rooms={rooms.data} bookingEnabled={canBook} onBook={onBook} />
       ) : null}
-      <p className="footnote">
-        Active rooms accept reservations. Availability is checked against your
-        meeting’s time when you book.
-      </p>
     </section>
   );
 }

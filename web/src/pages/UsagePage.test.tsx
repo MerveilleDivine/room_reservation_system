@@ -37,7 +37,7 @@ const report: UsageReport = {
 };
 
 describe('room usage', () => {
-  it('renders API-calculated time and explains unconfirmed observations', async () => {
+  it('renders API-calculated time without exposing the internal observation note', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(new Response(JSON.stringify(report))),
@@ -46,7 +46,7 @@ describe('room usage', () => {
     const table = await screen.findByRole('table');
     expect(within(table).getByText('Atlas')).toBeInTheDocument();
     expect(within(table).getByText('93%')).toBeInTheDocument();
-    expect(screen.getByText(report.observationNote)).toBeInTheDocument();
+    expect(screen.queryByText(report.observationNote)).not.toBeInTheDocument();
     expect(
       within(table).getByRole('progressbar', { name: 'Atlas reported share' }),
     ).toHaveAttribute('value', '93');

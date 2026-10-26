@@ -22,7 +22,7 @@ describe('additional time', () => {
     );
     expect(save).toHaveBeenCalledWith(reservation.id, 30, expect.any(String));
     expect(
-      screen.getByText(/Ending this meeting early keeps/),
+      screen.getByText(/Extra time is reserved separately/),
     ).toBeInTheDocument();
   });
 
@@ -47,7 +47,9 @@ describe('additional time', () => {
     await user.click(
       screen.getByRole('button', { name: 'Reserve extra time' }),
     );
-    expect(await screen.findByRole('alert')).toHaveTextContent('ROOM_OVERLAP');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'already booked',
+    );
     expect(screen.getByLabelText('Additional time')).toHaveValue('60');
     expect(close).not.toHaveBeenCalled();
   });

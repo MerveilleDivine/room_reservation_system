@@ -7,7 +7,8 @@ using RoomReservations.Api.Infrastructure;
 namespace RoomReservations.Api.Application;
 
 public sealed class ReservationService(
-    ReservationsDbContext db, BookingRules rules, TimeProvider clock, BookingWriteGate gate)
+    ReservationsDbContext db, BookingRules rules, TimeProvider clock, BookingWriteGate gate,
+    BookingProfile? profile = null)
 {
     public async Task<ReservationDto> SaveAsync(
         BookingRequest request, Guid? id, CancellationToken cancellationToken, Guid? submissionKey = null)
@@ -15,6 +16,9 @@ public sealed class ReservationService(
         await gate.Semaphore.WaitAsync(cancellationToken);
         try
         {
+            await RequireAccessAsync(request.OrganizerId, cancellationToken);
+            if (id is not null)
+                await RequireAccessAsync((await FindAsync(id.Value, cancellationToken)).OrganizerId, cancellationToken);
             var fingerprint = Fingerprint(new
             {
                 Operation = id is null ? "create" : $"edit:{id}",
@@ -50,10 +54,11 @@ public sealed class ReservationService(
         await gate.Semaphore.WaitAsync(cancellationToken);
         try
         {
+            var original = await FindAsync(id, cancellationToken);
+            await RequireAccessAsync(original.OrganizerId, cancellationToken);
             var fingerprint = Fingerprint(new { Operation = $"continue:{id}", request.AdditionalMinutes });
             var replay = await ReplayAsync(submissionKey, fingerprint, cancellationToken);
             if (replay is not null) return replay;
-            var original = await FindAsync(id, cancellationToken);
             var now = clock.GetUtcNow();
             if (original.StatusAt(now) != ReservationStatus.Booked || original.StartUtc > now)
                 throw new BookingException("MEETING_NOT_ONGOING", "Reserve extra time while the meeting is still in progress. Otherwise, create a new future reservation.", 409);
@@ -81,7 +86,9 @@ public sealed class ReservationService(
         {
             var receipt = await db.BookingSubmissions.FindAsync([submissionKey], cancellationToken)
                 ?? throw new BookingException("BOOKING_REQUEST_NOT_FOUND", "No booking confirmation was found for this request.", 404);
-            return (await FindAsync(receipt.ReservationId, cancellationToken)).ToDto(clock.GetUtcNow());
+            var reservation = await FindAsync(receipt.ReservationId, cancellationToken);
+            await RequireAccessAsync(reservation.OrganizerId, cancellationToken);
+            return reservation.ToDto(clock.GetUtcNow());
         }
         finally { gate.Semaphore.Release(); }
     }
@@ -116,7 +123,9 @@ public sealed class ReservationService(
         if (receipt is null) return null;
         if (receipt.Fingerprint != fingerprint)
             throw new BookingException("IDEMPOTENCY_KEY_REUSED", "This request identifier belongs to a different booking change. Refresh the form before submitting a new change.", 409);
-        return (await FindAsync(receipt.ReservationId, cancellationToken)).ToDto(clock.GetUtcNow());
+        var reservation = await FindAsync(receipt.ReservationId, cancellationToken);
+        await RequireAccessAsync(reservation.OrganizerId, cancellationToken);
+        return reservation.ToDto(clock.GetUtcNow());
     }
 
     private void AddReceipt(Guid? key, string fingerprint, Guid reservationId)
@@ -135,6 +144,7 @@ public sealed class ReservationService(
         try
         {
             var reservation = await FindAsync(id, cancellationToken);
+            await RequireAccessAsync(reservation.OrganizerId, cancellationToken);
             var now = clock.GetUtcNow();
             if (reservation.StatusAt(now) != ReservationStatus.Booked)
                 throw new BookingException("RESERVATION_NOT_ACTIVE", "This reservation is no longer active.", 409);
@@ -168,6 +178,9 @@ public sealed class ReservationService(
         }
         finally { gate.Semaphore.Release(); }
     }
+
+    private Task RequireAccessAsync(Guid organizerId, CancellationToken cancellationToken) =>
+        profile?.RequireAccessAsync(db, organizerId, cancellationToken) ?? Task.CompletedTask;
 
     private async Task<Reservation> FindAsync(Guid id, CancellationToken cancellationToken) =>
         await db.Reservations.Include(r => r.Room).Include(r => r.Organizer)

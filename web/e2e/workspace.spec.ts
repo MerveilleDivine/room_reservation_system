@@ -2,6 +2,15 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { Person, Reservation, UsageReport } from '../src/api/contracts';
 
+test.use({ extraHTTPHeaders: { 'X-Roomwise-Profile': 'admin' } });
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem('roomwise.profile.v1'))
+      sessionStorage.setItem('roomwise.profile.v1', 'admin');
+  });
+});
+
 const atlas = '10000000-0000-0000-0000-000000000001';
 const birch = '10000000-0000-0000-0000-000000000002';
 const alex = '20000000-0000-0000-0000-000000000001';
@@ -164,7 +173,9 @@ test('conflicting booking keeps form data and shows the backend error', async ({
     await page
       .getByRole('button', { name: 'Create reservation', exact: true })
       .click();
-    await expect(page.getByRole('alert')).toContainText('ROOM_OVERLAP');
+    await expect(page.getByRole('alert')).toContainText(
+      'This room is already booked',
+    );
     await expect(page.getByLabel('Meeting title')).toHaveValue(
       'Keep my meeting title',
     );
@@ -218,7 +229,9 @@ test('extra time respects the next room and organizer bookings', async ({
     await page
       .getByRole('button', { name: 'Reserve extra time', exact: true })
       .click();
-    await expect(page.getByRole('alert')).toContainText('ROOM_OVERLAP');
+    await expect(page.getByRole('alert')).toContainText(
+      'This room is already booked',
+    );
     await expect(page.getByLabel('Additional time')).toHaveValue('30');
     await request.post(`/api/reservations/${roomBooking.id}/cancel`);
     const organizerBlock = await request.post('/api/reservations', {
@@ -230,7 +243,9 @@ test('extra time respects the next room and organizer bookings', async ({
     await page
       .getByRole('button', { name: 'Reserve extra time', exact: true })
       .click();
-    await expect(page.getByRole('alert')).toContainText('ORGANIZER_OVERLAP');
+    await expect(page.getByRole('alert')).toContainText(
+      'The organizer already has a meeting',
+    );
     await request.post(`/api/reservations/${organizerBooking.id}/cancel`);
     const confirmation = page.waitForResponse(
       (response) =>
@@ -373,7 +388,7 @@ test('usage report renders backend totals and filters a room', async ({
   await expect(table.getByRole('row')).toHaveCount(2);
   await expect(
     page.getByText(report.observationNote, { exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
 });
 
 test('mobile layout and booking dialog support keyboard dismissal', async ({
@@ -437,5 +452,62 @@ test('concurrent HTTP requests cannot double-book a room or organizer', async ({
     expect((await conflict.json()).code).toBe('ORGANIZER_OVERLAP');
   } finally {
     await request.post('/api/reservations/' + created.id + '/cancel');
+  }
+});
+
+test('profile switching keeps other bookings read-only and preserves the selected member', async ({
+  page,
+  request,
+}) => {
+  const value = {
+    ...booking(7, birch, emilija),
+    title: 'Member ownership review',
+  };
+  const created = await request.post('/api/reservations', { data: value });
+  expect(created.status()).toBe(201);
+  const reservation = (await created.json()) as Reservation;
+  try {
+    await page.goto('/');
+    await page.getByLabel('Current profile').selectOption(alex);
+    await page
+      .getByRole('button', { name: 'Reservations', exact: true })
+      .click();
+    const row = page.getByRole('article').filter({
+      has: page.getByRole('heading', { name: value.title, exact: true }),
+    });
+    await expect(row).toBeVisible();
+    await expect(row.getByRole('button')).toHaveCount(0);
+    const denied = await request.post(
+      '/api/reservations/' + reservation.id + '/cancel',
+      { headers: { 'X-Roomwise-Profile': alex } },
+    );
+    expect(denied.status()).toBe(403);
+    await page.getByLabel('Current profile').selectOption(emilija);
+    await row.getByRole('button', { name: 'Edit', exact: true }).click();
+    await expect(
+      page.getByRole('textbox', { name: 'Organizer', exact: true }),
+    ).toHaveValue('Emilija Petrauskaite');
+    await expect(
+      page.getByRole('textbox', { name: 'Organizer', exact: true }),
+    ).toHaveAttribute('readonly', '');
+    await page.keyboard.press('Escape');
+    await page.reload();
+    await expect(page.getByLabel('Current profile')).toHaveValue(emilija);
+    await page
+      .getByRole('button', { name: 'New reservation', exact: true })
+      .click();
+    await expect(
+      page.getByRole('textbox', { name: 'Organizer', exact: true }),
+    ).toHaveValue('Emilija Petrauskaite');
+    await page.keyboard.press('Escape');
+    await page.getByLabel('Current profile').selectOption('admin');
+    await page
+      .getByRole('button', { name: 'Reservations', exact: true })
+      .click();
+    await expect(
+      row.getByRole('button', { name: 'Edit', exact: true }),
+    ).toBeVisible();
+  } finally {
+    await request.post('/api/reservations/' + reservation.id + '/cancel');
   }
 });

@@ -1,4 +1,5 @@
 const paths = {
+  check: <path d="m5 12 4 4L19 6" />,
   door: (
     <>
       <path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17M3 21h18M9 3v18" />

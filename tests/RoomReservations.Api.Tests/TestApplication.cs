@@ -14,6 +14,12 @@ internal sealed class TestApplication(int maximumDurationDays = 7) : WebApplicat
     private readonly string databaseName = Guid.NewGuid().ToString();
     public TestClock Clock { get; } = new(Now);
 
+    protected override void ConfigureClient(HttpClient client)
+    {
+        base.ConfigureClient(client);
+        client.DefaultRequestHeaders.Add("X-Roomwise-Profile", "admin");
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.ConfigureServices(services =>

@@ -11,6 +11,7 @@ import { useSubmissionKey } from '../hooks/useSubmissionKey';
 import { Icon } from './Icon';
 
 interface Props {
+  organizerId?: string;
   rooms: Room[];
   people: Person[];
   initial: Reservation | null;
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export function BookingDialog({
+  organizerId,
   rooms,
   people,
   initial,
@@ -33,6 +35,7 @@ export function BookingDialog({
 }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleInput = useRef<HTMLInputElement>(null);
+  const endInput = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<Error | null>(null);
   const [saving, setSaving] = useState(false);
   const pendingRequest = useRef<BookingRequest | null>(null);
@@ -140,7 +143,12 @@ export function BookingDialog({
               <select
                 name="roomId"
                 required
-                defaultValue={initial?.roomId ?? preferredRoomId ?? ''}
+                defaultValue={
+                  initial?.roomId ??
+                  preferredRoomId ??
+                  rooms.find((room) => room.isActive)?.id ??
+                  ''
+                }
               >
                 <option value="" disabled>
                   Choose a room
@@ -157,28 +165,55 @@ export function BookingDialog({
                 ))}
               </select>
             </label>
+            {organizerId ? (
+              <input type="hidden" name="organizerId" value={organizerId} />
+            ) : null}
             <label>
               Organizer
-              <select
-                name="organizerId"
-                required
-                defaultValue={initial?.organizerId ?? ''}
-              >
-                <option value="" disabled>
-                  Choose an organizer
-                </option>
-                {people.map((person) => (
-                  <option key={person.id} value={person.id}>
-                    {person.firstName} {person.lastName}
+              {organizerId ? (
+                <>
+                  <input
+                    readOnly
+                    value={people
+                      .filter((person) => person.id === organizerId)
+                      .map((person) => `${person.firstName} ${person.lastName}`)
+                      .join('')}
+                  />
+                </>
+              ) : (
+                <select
+                  name="organizerId"
+                  required
+                  defaultValue={initial?.organizerId ?? ''}
+                >
+                  <option value="" disabled>
+                    Choose an organizer
                   </option>
-                ))}
-              </select>
+                  {people.map((person) => (
+                    <option key={person.id} value={person.id}>
+                      {person.firstName} {person.lastName}
+                    </option>
+                  ))}
+                </select>
+              )}
             </label>
             <label>
               Starts
               <input
                 name="start"
                 type="datetime-local"
+                onChange={(event) => {
+                  const start = new Date(event.target.value);
+                  const end = endInput.current;
+                  if (
+                    end &&
+                    !Number.isNaN(start.getTime()) &&
+                    (!end.value || new Date(end.value) <= start)
+                  )
+                    end.value = toLocalInput(
+                      new Date(start.getTime() + 60 * 60 * 1000),
+                    );
+                }}
                 step="60"
                 required
                 defaultValue={toLocalInput(
@@ -189,6 +224,7 @@ export function BookingDialog({
             <label>
               Ends
               <input
+                ref={endInput}
                 name="end"
                 type="datetime-local"
                 step="60"
@@ -214,14 +250,9 @@ export function BookingDialog({
             />
           </label>
         </fieldset>
-        <p className="form-note">
-          Times use your device’s timezone. Capacity and scheduling conflicts
-          are checked when you save.
-        </p>
         {error ? (
           <div className="notice error" role="alert">
             {error.message}
-            {error instanceof ApiError ? <code>{error.code}</code> : null}
           </div>
         ) : null}
         <div className="dialog-actions">

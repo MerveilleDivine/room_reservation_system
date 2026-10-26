@@ -1,6 +1,7 @@
 import type { Reservation, ReservationAction } from '../api/contracts';
 import { formatDate, formatTime } from '../lib/dates';
 import { EmptyState } from './Feedback';
+import { canManage } from '../lib/profile';
 
 const actionLabels: Record<ReservationAction, string> = {
   edit: 'Edit',
@@ -11,10 +12,12 @@ const actionLabels: Record<ReservationAction, string> = {
 };
 
 export function ReservationList({
+  profile,
   reservations,
   pending,
   onAction,
 }: {
+  profile: string;
   reservations: Reservation[];
   pending: boolean;
   onAction: (reservation: Reservation, action: ReservationAction) => void;
@@ -61,12 +64,12 @@ export function ReservationList({
             {reservation.continuationOfId ? (
               <small>Additional time · linked booking</small>
             ) : null}
-            {reservation.completionNote ? (
-              <small>{reservation.completionNote}</small>
-            ) : null}
           </div>
           <div className="reservation-actions">
-            {reservation.allowedActions.map((action) => (
+            {(canManage(profile, reservation.organizerId)
+              ? reservation.allowedActions
+              : []
+            ).map((action) => (
               <button
                 key={action}
                 className={`text-button ${action === 'cancel' ? 'danger' : ''}`}

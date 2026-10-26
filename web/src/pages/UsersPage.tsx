@@ -38,7 +38,7 @@ export function UsersPage({ people }: { people: ApiResource<Person[]> }) {
       ) : (
         <EmptyState
           title="No organizers"
-          description="Seeded users will appear when the API is running."
+          description="No people are available right now. Try refreshing."
         />
       )}
     </section>

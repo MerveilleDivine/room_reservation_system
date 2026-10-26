@@ -1,10 +1,13 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
+import { defaultProfile, storeProfile } from '../lib/profile';
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  sessionStorage.clear();
+  storeProfile(defaultProfile);
 });
 
 Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {

@@ -111,8 +111,8 @@ svg {
   margin: auto;
   padding: 0 32px;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 32px;
+  grid-template-columns: auto 1fr auto;
+  gap: 22px;
   align-items: center;
 }
 .brand {
@@ -163,6 +163,16 @@ nav {
   justify-content: flex-end;
   align-items: center;
   gap: 13px;
+}
+.profile-switcher select {
+  width: 155px;
+  min-width: 0;
+  max-width: 100%;
+  border-radius: 22px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
 }
 .main-content {
   max-width: 1200px;
@@ -923,7 +933,7 @@ progress::-moz-progress-bar {
     gap: 6px;
   }
   .header-actions .icon-button {
-    display: none;
+    display: inline-flex;
   }
   .page-intro.with-visual {
     gap: 32px;
@@ -963,9 +973,27 @@ progress::-moz-progress-bar {
 }
 @media (max-width: 720px) {
   .header-inner {
-    grid-template-columns: 1fr auto;
+    display: flex;
+    flex-wrap: wrap;
     padding: 20px 20px 14px;
-    gap: 21px 12px;
+    gap: 14px 12px;
+  }
+  .brand {
+    margin-right: auto;
+  }
+  .header-actions {
+    display: contents;
+  }
+  .profile-switcher {
+    max-width: 42%;
+  }
+  .profile-switcher select {
+    width: 140px;
+    padding-inline: 10px;
+  }
+  .header-actions .new-booking {
+    order: 3;
+    width: 100%;
   }
   .brand {
     font-size: 20px;
@@ -975,6 +1003,8 @@ progress::-moz-progress-bar {
     height: 32px;
   }
   nav {
+    order: 2;
+    flex-basis: 100%;
     grid-column: 1 / -1;
     grid-row: 2;
     display: grid;
@@ -1169,5 +1199,53 @@ progress::-moz-progress-bar {
   *::after {
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+.success {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: confirmation-in 180ms ease-out;
+}
+.success > span {
+  flex: 1;
+}
+.success > svg {
+  color: #3f6849;
+}
+.room-card,
+.person-card,
+.reservation-card {
+  transition: background-color 160ms ease;
+}
+.room-card:hover,
+.person-card:hover,
+.reservation-card:hover {
+  background-color: rgb(255 255 255 / 45%);
+}
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.booking-dialog[open] {
+  animation: confirmation-in 180ms ease-out;
+}
+@keyframes confirmation-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .success,
+  .booking-dialog[open] {
+    animation: none;
+  }
+  .button:active:not(:disabled) {
+    transform: none;
   }
 }

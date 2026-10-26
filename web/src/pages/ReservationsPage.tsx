@@ -11,12 +11,14 @@ import { useApi } from '../hooks/useApi';
 import { toUtc } from '../lib/dates';
 
 export function ReservationsPage({
+  profile,
   rooms,
   people,
   revision,
   pending,
   onAction,
 }: {
+  profile: string;
   rooms: Room[];
   people: Person[];
   revision: number;
@@ -43,6 +45,20 @@ export function ReservationsPage({
     <section aria-labelledby="reservations-heading">
       <div className="section-heading">
         <h2 id="reservations-heading">Meeting schedule</h2>
+        {query.size ? (
+          <button
+            className="text-button"
+            onClick={() => {
+              setRoom('');
+              setOrganizer('');
+              setStatus('');
+              setFrom('');
+              setTo('');
+            }}
+          >
+            Clear filters
+          </button>
+        ) : null}
       </div>
       <div className="filters reservation-filters">
         <label>
@@ -95,7 +111,7 @@ export function ReservationsPage({
           />
         </label>
         <label>
-          Until (exclusive)
+          Until
           <input
             aria-label="Reservations until"
             type="datetime-local"
@@ -112,6 +128,7 @@ export function ReservationsPage({
         </p>
       ) : reservations.data ? (
         <ReservationList
+          profile={profile}
           reservations={reservations.data}
           pending={pending}
           onAction={onAction}

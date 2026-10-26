@@ -9,11 +9,11 @@ I built Roomwise for an internship technical assignment using ASP.NET Core, EF C
 
 [Try Roomwise](https://roomwise-reservations.vercel.app/) · [Architecture](docs/architecture.md) · [API](docs/api.md) · [Verification](docs/verification.md)
 
-No account needed. Open it and have a look.
+No account needed. Choose a profile in the header and have a look.
 
 ## Give it five minutes
 
-1. Open Rooms. Filter by capacity, floor or equipment. Select several equipment options if you need them together. Studio is inactive, so you cannot book it.
+1. Choose a person in the header to manage their own bookings, or Administrator to manage all bookings. Open Rooms. Filter by capacity, floor or equipment. Select several equipment options if you need them together. Studio is inactive, so you cannot book it.
 2. Reserve Atlas for a future time. Choose an organizer, add a title and enter the number of attendees.
 3. Try booking the same room at the same time. Then try booking that organizer into another room at the same time. Both should be rejected with a clear explanation.
 4. Open Reservations to edit or cancel a future booking.
@@ -25,6 +25,14 @@ Extra time creates a separate, linked booking. It must fit the room's schedule a
 All times are entered in your device's timezone and sent to the API as UTC instants. Use Refresh workspace to fetch the latest state. An unattended tab does not poll the API.
 
 The demo uses synthetic data and in-memory storage. Restarting the server resets it. Seeded dates are relative to startup, so the ongoing example eventually ends.
+
+## Who can change a booking?
+
+Everyone can browse rooms, people, reservations and usage. A selected member can create bookings for themselves and manage their own reservations. Administrator can create and manage bookings for any organizer.
+
+The selection stays in session storage for the current browser tab. Switching profiles closes open forms. The API checks ownership inside the same write gate used for booking validation, including edits, cancellations, check-in, early completion, extra time and confirmation recovery.
+
+Profiles are selectable sample identities, not authenticated accounts. The `X-Roomwise-Profile` header carries the chosen person ID or `admin`; anyone can switch it. This models the workflow without adding account infrastructure to an assignment that excludes authentication.
 
 ## The part I cared about
 
@@ -150,11 +158,11 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Playwright starts the real API and frontend with fresh seed data. The eight scenarios cover booking, reload, editing, cancellation, conflicts, additional time, lost confirmations, check-in, early completion, usage filtering, mobile layout, keyboard focus and concurrent requests.
+Playwright starts the real API and frontend with fresh seed data. The browser scenarios cover booking, reload, editing, cancellation, conflicts, additional time, lost confirmations, check-in, early completion, usage filtering, mobile layout, keyboard focus, concurrent requests and profile ownership.
 
 GitHub Actions checks both the two-server development setup and the published container.
 
-The latest local frontend check passed all 29 tests, TypeScript, the production build and formatting. The recorded full CI verification passed 80 backend tests and eight Chromium scenarios in each server setup. See the [verification record](docs/verification.md) for its source revision, run links and environment limits.
+The profile-selector update passes 32 local frontend tests, TypeScript, the production build and formatting. The recorded full CI verification passed 80 backend tests and eight Chromium scenarios in each server setup. See the [verification record](docs/verification.md) for its source revision, run links and environment limits.
 
 ## Change the booking policy
 
@@ -169,7 +177,7 @@ Edit `src/RoomReservations.Api/appsettings.json`:
 }
 ```
 
-Configuration is validated at startup. The frontend reads the displayed limits from `/api/booking-policy`.
+Configuration is validated at startup. The current limits are available from `/api/booking-policy`.
 
 A day here means 24 elapsed hours. An explicit office timezone and a policy for ambiguous daylight-saving times would be needed for broader scheduling requirements.
 

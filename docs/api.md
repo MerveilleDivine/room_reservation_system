@@ -19,6 +19,14 @@ Local base URL: `http://localhost:5080/api`. JSON property names are camelCase. 
 | POST   | `/reservations/{id}/continuations` | Reserve additional time after an ongoing booking                 |
 | GET    | `/booking-requests/{requestId}`    | Recover the current reservation for a confirmed booking write    |
 
+### Selected profile
+
+All booking writes and confirmation recovery require one `X-Roomwise-Profile` header: an existing person GUID for member ownership, or `admin` for workspace management. Read-only room, user, reservation and usage endpoints remain open. Members may create only for themselves, edit only their own reservations without transferring ownership, and perform lifecycle actions only on their own bookings. Administrator can act for any organizer.
+
+Missing headers return `PROFILE_REQUIRED` (400), invalid profiles return `INVALID_PROFILE` (400), and ownership violations return `BOOKING_ACCESS_DENIED` (403). A request receipt is also restricted to the current reservation owner or Administrator.
+
+The header represents a freely selectable sample profile and is not proof of identity. It must be replaced by verified identity and trusted role resolution before real deployment.
+
 Equipment codes: `projector`, `tv`, `videoConferencing`, `whiteboard`. Multiple filters require all selected equipment. Status is `Booked`, `Completed` or `Cancelled`.
 
 Create/edit body (choose a future date inside the current advance window):
