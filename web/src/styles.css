@@ -1,13 +1,14 @@
 :root {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: #202020;
+  color: #1c1c19;
+  font-weight: 450;
   background: #f8f7f4;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   --accent: #202020;
-  --muted: #73736c;
-  --line: #e7e7e3;
+  --muted: #505049;
+  --line: #d9d9d2;
   --surface: #f6f6f4;
 }
 * {
@@ -96,7 +97,8 @@ svg {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: #f8f7f4 url('/images/hexagon-pattern.svg') repeat;
+  background: url('/images/hexagon-pattern.svg') repeat;
+  opacity: 0.24;
   pointer-events: none;
 }
 .site-header {
@@ -143,7 +145,7 @@ nav {
   border: 0;
   border-radius: 24px;
   background: transparent;
-  color: #73736c;
+  color: var(--muted);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
@@ -181,7 +183,7 @@ nav {
   padding: 16px 0;
 }
 .eyebrow {
-  color: #73736c;
+  color: var(--muted);
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.09em;
@@ -222,12 +224,12 @@ h1 {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 3px 0;
-  color: #73736c;
+  color: var(--muted);
   font-size: 9px;
   line-height: 1.5;
 }
 .intro-visual figcaption span {
-  color: #73736c;
+  color: var(--muted);
 }
 .button {
   display: inline-flex;
@@ -269,7 +271,7 @@ h1 {
   padding: 0;
   border: 0;
   border-radius: 50%;
-  color: #73736c;
+  color: var(--muted);
   background: transparent;
 }
 .icon-button:hover:not(:disabled) {
@@ -286,7 +288,7 @@ h1 {
 h2,
 .section-title {
   font-size: 20px;
-  font-weight: 550;
+  font-weight: 600;
   letter-spacing: -0.5px;
 }
 .section-title {
@@ -302,9 +304,9 @@ h2,
 }
 label,
 legend {
-  color: #73736c;
-  font-size: 11px;
-  font-weight: 500;
+  color: #44443e;
+  font-size: 12px;
+  font-weight: 600;
 }
 label {
   display: flex;
@@ -320,11 +322,11 @@ select {
   border: 1px solid #e8e8e3;
   border-radius: 9px;
   color: #242421;
-  background: var(--surface);
+  background: #fcfcfa;
   font-size: 12px;
 }
 input::placeholder {
-  color: #73736c;
+  color: var(--muted);
 }
 select {
   min-width: 140px;
@@ -355,7 +357,7 @@ legend {
   border: 1px solid #e5e5df;
   border-radius: 9px;
   background: #fff;
-  color: #696963;
+  color: #494943;
   font-size: 11px;
   font-weight: 400;
   white-space: nowrap;
@@ -375,6 +377,7 @@ legend {
 }
 .room-grid {
   display: grid;
+  background: rgb(248 247 244 / 92%);
   border-top: 1px solid var(--line);
 }
 .room-card {
@@ -394,20 +397,20 @@ legend {
 }
 .room-location {
   margin-bottom: 8px;
-  color: #73736c;
+  color: var(--muted);
   font-size: 11px;
 }
 .room-card h3 {
   color: #252522;
   font-size: 29px;
-  font-weight: 550;
+  font-weight: 600;
   letter-spacing: -1px;
   line-height: 1.2;
 }
 .room-id {
   display: block;
   margin-top: 10px;
-  color: #73736c;
+  color: var(--muted);
   font-size: 10px;
   letter-spacing: -0.15px;
   overflow-wrap: anywhere;
@@ -430,7 +433,7 @@ legend {
 }
 .equipment-tags span {
   font-size: 11px;
-  color: #73736c;
+  color: var(--muted);
   line-height: 1.6;
 }
 .pill {
@@ -441,7 +444,7 @@ legend {
   padding: 5px 9px;
   border-radius: 20px;
   background: #f2f2ee;
-  color: #6d6d65;
+  color: #505049;
   font-size: 10px;
   line-height: 1.4;
   white-space: nowrap;
@@ -497,7 +500,7 @@ legend {
 .footnote,
 .report-note {
   margin-top: 22px;
-  color: #73736c;
+  color: var(--muted);
   font-size: 11px;
   line-height: 1.8;
 }
@@ -510,7 +513,7 @@ legend {
   margin-top: 64px;
   padding-top: 22px;
   border-top: 1px solid var(--line);
-  color: #73736c;
+  color: var(--muted);
   font-size: 10px;
   line-height: 1.7;
 }
@@ -555,7 +558,7 @@ legend {
 .loading {
   padding: 65px 20px;
   text-align: center;
-  color: #73736c;
+  color: var(--muted);
   font-size: 13px;
 }
 .empty-state {
@@ -587,6 +590,7 @@ legend {
 .reservation-list,
 .people-list {
   display: grid;
+  background: rgb(248 247 244 / 92%);
   border-top: 1px solid var(--line);
 }
 .reservation-card {
@@ -608,7 +612,7 @@ legend {
 .reservation-date span,
 .reservation-date small {
   font-size: 11px;
-  color: #73736c;
+  color: var(--muted);
 }
 .reservation-details {
   flex: 1;
@@ -622,13 +626,13 @@ legend {
 }
 .reservation-title h3 {
   font-size: 17px;
-  font-weight: 550;
+  font-weight: 600;
   letter-spacing: -0.35px;
   overflow-wrap: anywhere;
 }
 .reservation-details p {
   margin: 10px 0 7px;
-  color: #74746b;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.7;
 }
@@ -636,7 +640,7 @@ legend {
   display: block;
   margin-top: 6px;
   font-size: 10px;
-  color: #73736c;
+  color: var(--muted);
 }
 .reservation-actions {
   display: flex;
@@ -665,13 +669,13 @@ legend {
 }
 .person-card h3 {
   font-size: 17px;
-  font-weight: 550;
+  font-weight: 600;
   letter-spacing: -0.3px;
 }
 .person-id {
   display: block;
   margin-top: 8px;
-  color: #73736c;
+  color: var(--muted);
   font-size: 10px;
   overflow-wrap: anywhere;
 }
@@ -690,7 +694,7 @@ legend {
 .person-count span {
   display: block;
   margin-top: 8px;
-  color: #73736c;
+  color: var(--muted);
   font-size: 11px;
 }
 .booking-dialog {
@@ -724,7 +728,7 @@ legend {
   font-size: 31px;
   line-height: 1.1;
   letter-spacing: -1.2px;
-  font-weight: 550;
+  font-weight: 600;
 }
 .booking-dialog form {
   display: grid;
@@ -750,7 +754,7 @@ legend {
   overflow-wrap: anywhere;
 }
 .continuation-context p {
-  color: #73736c;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.7;
 }
@@ -770,7 +774,7 @@ legend {
   max-width: 110px;
 }
 .form-note {
-  color: #73736c;
+  color: var(--muted);
   font-size: 11px;
   line-height: 1.8;
 }
@@ -797,10 +801,11 @@ legend {
   font-size: 12px;
 }
 .report-context > span {
-  color: #73736c;
+  color: var(--muted);
   font-size: 10px;
 }
 .usage-table-wrap {
+  background: rgb(248 247 244 / 96%);
   max-width: 100%;
   overflow: auto;
   border-top: 1px solid var(--line);
@@ -822,9 +827,9 @@ legend {
 }
 .usage-table thead th {
   padding-block: 18px;
-  color: #73736c;
-  font-size: 11px;
-  font-weight: 400;
+  color: #44443e;
+  font-size: 12px;
+  font-weight: 600;
 }
 .usage-table th:first-child {
   text-align: left;
@@ -839,7 +844,7 @@ legend {
 .usage-table tbody th > span {
   display: block;
   margin-top: 8px;
-  color: #73736c;
+  color: var(--muted);
   font-size: 10px;
   font-weight: 400;
 }
@@ -847,7 +852,7 @@ legend {
   border-bottom: 0;
 }
 .usage-table small {
-  color: #73736c;
+  color: var(--muted);
   font-size: 10px;
 }
 .confirmed-share {
@@ -882,7 +887,7 @@ progress::-moz-progress-bar {
 .metric-definitions {
   max-width: 740px;
   margin-top: 28px;
-  color: #73736c;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.8;
 }
