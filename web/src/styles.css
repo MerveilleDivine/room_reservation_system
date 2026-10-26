@@ -98,7 +98,7 @@ svg {
   inset: 0;
   z-index: -1;
   background: url('/images/hexagon-pattern.svg') repeat;
-  opacity: 0.24;
+  opacity: 0.65;
   pointer-events: none;
 }
 .site-header {
@@ -377,7 +377,6 @@ legend {
 }
 .room-grid {
   display: grid;
-  background: rgb(248 247 244 / 92%);
   border-top: 1px solid var(--line);
 }
 .room-card {
@@ -590,7 +589,6 @@ legend {
 .reservation-list,
 .people-list {
   display: grid;
-  background: rgb(248 247 244 / 92%);
   border-top: 1px solid var(--line);
 }
 .reservation-card {
@@ -805,7 +803,6 @@ legend {
   font-size: 10px;
 }
 .usage-table-wrap {
-  background: rgb(248 247 244 / 96%);
   max-width: 100%;
   overflow: auto;
   border-top: 1px solid var(--line);
