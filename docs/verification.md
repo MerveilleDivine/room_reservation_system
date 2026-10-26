@@ -4,7 +4,7 @@ Date: 23 October 2026.
 
 ## Verified source
 
-[Checks run 40010656310](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/40010656310) verifies source commit `339040e4eec9e00dd612f567eb3064882808de75`. It includes the requested hexagon background, linked additional-time reservations, booking request recovery and precise usage/completion language. Both browser checks use the official Playwright image matching the installed test dependency, avoiding host-level browser dependency installation. The subsequent documentation update changes no application, test or workflow code.
+[Checks run 40010656310](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/40010656310) verifies source commit `339040e4eec9e00dd612f567eb3064882808de75`. It includes the hexagon background, linked additional-time reservations, booking request recovery and precise usage/completion language. Both browser checks use the official Playwright image matching the installed test dependency, avoiding host-level browser dependency installation. This run records the state of that source revision; later checks are listed below.
 
 | Check               | Evidence                                                                                        | Result   |
 | ------------------- | ----------------------------------------------------------------------------------------------- | -------- |
@@ -44,17 +44,15 @@ Earlier hosted verification opened the extra-time dialog, selected 30 minutes, s
 
 The live demo has no sign-in and uses synthetic data. Records and request receipts reset on process replacement and are not shared across separate instances. The one-process container tests establish behavior within the assignment's required storage model, not distributed persistence.
 
-## Submission handoff
+## Implemented scope
 
-The required pages, seven configurable backend booking rules, clear API errors, backend usage calculations and requested ASP.NET/EF Core InMemory/React stack are implemented. The README includes clean-checkout startup commands; architecture, assumptions and API contracts are documented. Calendar/timeline and PDF export remain optional, unimplemented enhancements.
-
-Include the GitHub repository and public demo links when submitting. The repository is currently private, so reviewers need access to inspect and run the source.
+The required pages, seven configurable backend booking rules, clear API errors, backend usage calculations and required ASP.NET/EF Core InMemory/React stack are implemented. The README includes clean-checkout startup commands; architecture, assumptions and API contracts are documented. Calendar/timeline and PDF export remain optional, unimplemented enhancements.
 
 ## Local evidence and limits
 
-- `npm run check` passes locally: strict TypeScript, production build, 28 tests and formatting.
-- Backend and browser execution evidence comes from the actual GitHub Actions runner; this workspace has no .NET SDK.
-- A clean Windows checkout has not yet been manually started. Follow the README setup commands for that environment check.
+- On 26 October 2026, `npm run check` passed for application commit `c08825f50bd4bd8428fa9db43278634607695b56`: strict TypeScript, production build, 29 tests and formatting. This includes the regression test for no API polling while idle.
+- Backend and browser execution evidence comes from the linked GitHub Actions run. The 26 October check covered the frontend only.
+- A clean Windows checkout has not yet been manually started. The README documents the startup commands for that environment.
 - Manual check-in estimates reported use. It cannot establish continuous presence, actual departure, a no-show or an overrun. The percentage is not office-hours utilization.
 - Booking receipts cover create/edit/additional-time requests for one server lifetime. They are not persistent client drafts or distributed idempotency, and do not cover lifecycle actions.
 
