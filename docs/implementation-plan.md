@@ -24,6 +24,12 @@ The recorded full CI run passed 80 backend tests, 28 frontend unit tests and all
 
 The lost-confirmation scenario forwards a write to the real API, lets it commit, and aborts its browser response. The recovery lookup uses the real backend. Other browser scenarios do not intercept traffic.
 
+## Profile ownership update
+
+Selectable member and administrator profiles add ownership to booking workflows without account infrastructure. The API checks ownership under the booking write gate; the interface hides unavailable actions and fills a member's organizer automatically. Profile selection persists per browser tab. Technical explanations stay in documentation, while the interface uses concise feedback and clear booking controls.
+
+The full CI run for `359f641` passed backend tests, 32 frontend tests, and all nine browser scenarios against development servers and the published container. See [verification.md](verification.md).
+
 ## Follow-up work
 
 1. Verify setup from a fresh Windows checkout with the README commands.

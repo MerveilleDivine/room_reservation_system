@@ -919,10 +919,17 @@ progress::-moz-progress-bar {
 }
 @media (max-width: 1050px) {
   .header-inner {
-    grid-template-columns: auto 1fr auto;
-    gap: 20px;
+    grid-template-columns: 1fr auto;
+    gap: 18px;
+    padding-block: 18px;
+  }
+  .header-actions {
+    grid-column: 2;
+    grid-row: 1;
   }
   nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
     justify-content: center;
     gap: 0;
   }

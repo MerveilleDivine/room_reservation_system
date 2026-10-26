@@ -1,6 +1,14 @@
 # Verification record
 
-Date: 23 October 2026.
+Latest full verification: 26 October 2026.
+
+## Profile ownership and interface update
+
+[Checks run 40371881745](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/40371881745) passed for source commit `359f641524ff481573f4f21b2e209b5269466395`: backend restore/build/tests, strict TypeScript, production frontend build, 32 frontend tests, formatting and all nine Chromium scenarios in both development and published-container setups.
+
+The new browser scenario verifies read-only access to another organizer's booking, API rejection of a cross-owner cancellation, owner editing, administrator access and profile persistence after reload. Backend profile tests cover missing/invalid profiles, all mutation actions, ownership transfer prevention, administrator writes and receipt recovery. The interface now includes a discreet profile selector, automatic member organizer selection, simpler feedback and no implementation notes or image caption.
+
+The following sections preserve the earlier baseline evidence and its exact source revisions.
 
 ## Verified source
 

@@ -56,13 +56,13 @@ export function ReservationList({
               {reservation.organizerName} <span className="dot">·</span>{' '}
               {reservation.attendees} people
             </p>
-            <small>
-              {reservation.checkedInAtUtc
-                ? `Checked in at ${formatTime(reservation.checkedInAtUtc)}`
-                : 'No check-in recorded'}
-            </small>
+            {reservation.checkedInAtUtc ? (
+              <small>
+                Checked in at {formatTime(reservation.checkedInAtUtc)}
+              </small>
+            ) : null}
             {reservation.continuationOfId ? (
-              <small>Additional time · linked booking</small>
+              <small>Additional time</small>
             ) : null}
           </div>
           <div className="reservation-actions">

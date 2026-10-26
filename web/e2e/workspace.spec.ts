@@ -266,7 +266,7 @@ test('extra time respects the next room and organizer bookings', async ({
     );
     await expect(page.getByRole('dialog')).not.toBeVisible();
     await expect(
-      page.getByText('Additional time · linked booking', { exact: true }),
+      page.getByText('Additional time', { exact: true }),
     ).toBeVisible();
   } finally {
     for (const id of createdIds)
@@ -426,6 +426,14 @@ test('mobile layout and booking dialog support keyboard dismissal', async ({
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+  for (const width of [320, 768, 1024]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  }
   expect(errors).toEqual([]);
 });
 
