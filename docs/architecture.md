@@ -20,7 +20,7 @@ These are folders within one API project, not separate deployable services. Extr
 
 **Consequences:** this is not a relational database or a production persistence strategy. Referential checks are explicit. A singleton write gate protects validation plus save only within this one API process. InMemory does not supply the relational guarantees needed for multiple deployed instances.
 
-**Production direction, not implemented:** move to a relational provider, enforce required relationships, implement a database-backed concurrency/overlap strategy and integration-test it against that real provider. A process-local semaphore must not be advertised as a distributed solution.
+**Production direction, not implemented:** move to a relational provider, enforce required relationships, implement a database-backed concurrency/overlap strategy and integration-test it against that real provider. The process-local semaphore does not protect writes across instances.
 
 Reference: [Microsoft EF Core InMemory guidance](https://learn.microsoft.com/en-us/ef/core/providers/in-memory/).
 
@@ -55,7 +55,7 @@ The usage report labels scheduled, reported and unconfirmed minutes separately. 
 
 **Decision:** React local state and a small abortable resource hook are sufficient. Page-specific filters stay in their own page components. Shared room/user data is loaded once per refresh; independent requests start concurrently. Requests are cancelled on unmount or query changes so stale responses do not overwrite newer queries.
 
-**Tradeoff:** no persistent client cache or router yet. Reloading returns to the Rooms page. Add a query library or routing when caching, deep links or more complex navigation justify it; do not add Redux solely to make the stack list longer.
+**Tradeoff:** no persistent client cache or router yet. Reloading returns to the Rooms page. A query library or router would become useful for persistent caching, deep links or more complex navigation.
 
 **Refresh:** mutation success reloads API-derived state, and the Refresh workspace button reloads the current view on demand. There is no periodic API polling: an unattended demo tab must not keep a serverless container awake. Displayed statuses and allowed actions describe the last response. Backend checks remain authoritative if a button's availability changes between refresh and click.
 
@@ -63,11 +63,11 @@ The usage report labels scheduled, reported and unconfirmed minutes separately. 
 
 Business failures carry a stable code and human message using Problem Details. Missing resources are 404, scheduling/lifecycle conflicts are 409, and invalid values are 400. Malformed bound requests are also routed through the handler. The frontend displays the server's message, keeps the form open, and preserves input.
 
-Unexpected server errors must not expose exception internals. Normal server logging remains enabled. The API is bound to loopback for development and has no authentication by explicit assignment scope. The public preview uses synthetic data and deployment-scoped hostname configuration; it is not intended for private or real office bookings.
+Unexpected server errors return a generic message without exception internals. Normal server logging remains enabled. The API is bound to loopback for development and has no authentication by explicit assignment scope. The public preview uses synthetic data and deployment-scoped hostname configuration; it is not intended for private or real office bookings.
 
 ## ADR 7: minimal interface
 
-The revised visual direction uses a compact top navigation, white space, larger system typography, thin separators and monochrome actions. A small, locally served SVG tile recreates the requested soft hexagon background with sparse pale blue accents. It repeats through CSS without JavaScript, animation or extra dependencies, stays sharp on all screen sizes, and is decorative rather than part of the accessibility tree. The header and dialogs retain solid white surfaces. Rooms appear as a scannable list with explicit IDs, capacity, equipment, status and booking. One locally served, 159 KB workspace photograph provides context; its CC0 source is recorded in `web/public/images/CREDITS.md`, and its caption identifies it as illustrative rather than a photograph of a particular seeded room. Explicit image dimensions reserve layout space while it loads.
+The interface uses a compact top navigation, white space, larger system typography, thin separators and monochrome actions. A small, locally served SVG tile provides a soft hexagon background with sparse pale blue accents. It repeats through CSS without JavaScript, animation or extra dependencies, stays sharp on all screen sizes, and is decorative rather than part of the accessibility tree. The header and dialogs retain solid white surfaces. Rooms appear as a scannable list with explicit IDs, capacity, equipment, status and booking. One locally served, 159 KB workspace photograph provides context; its CC0 source is recorded in `web/public/images/CREDITS.md`, and its caption identifies it as illustrative rather than a photograph of a particular seeded room. Explicit image dimensions reserve layout space while it loads.
 
 Reservations, people, usage and the booking dialog share the same spacing and type scale. Inline SVG icons use a consistent stroke. The modal closes before unmounting so the native dialog can restore focus to its trigger. Reduced-motion settings and a keyboard skip link are supported.
 
