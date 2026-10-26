@@ -1,25 +1,97 @@
 # Roomwise
+### A room. A time. A booking that actually holds.
 
-A meeting-room reservation app built with ASP.NET Core, Entity Framework Core InMemory, React and TypeScript.
+You book a meeting room, arrive with your team, and someone else is already there. Lovely.
 
-The implementation follows the supplied room-reservation technical brief. It includes the required booking flow, a room usage report, and a minimal interface. Calendar/timeline and PDF export remain optional follow-up work. The original assignment PDF is kept outside this repository.
+Roomwise handles the scheduling side of that problem: find a room, make a reservation, and check that both the space and the organizer are free. If the meeting finishes early, release the room. If it needs more time, reserve the next slot without pushing somebody else's meeting out of the way.
 
-[Open the live demo](https://roomwise-reservations.vercel.app/). No installation or sign-in is needed.
+Built by [Mervine Muganguzi](https://github.com/MerveilleDivine) for an internship technical assignment, using ASP.NET Core, EF Core InMemory, React and TypeScript.
 
-## Start in VS Code
+[Try Roomwise](https://roomwise-reservations.vercel.app/) · [Architecture](docs/architecture.md) · [API](docs/api.md) · [Verification](docs/verification.md)
 
-Install the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0), [Node.js 24 LTS](https://nodejs.org/en/download) (24.15 or newer), and Git. Node.js 22.22.2+ is also supported. Install the SDK, not just the .NET runtime.
+No account needed. Open it and have a look.
 
-Open this repository's root folder in VS Code. The commands below also work in Windows PowerShell.
+## Give it five minutes
 
-Terminal 1, from the repository root:
+1. Open Rooms. Filter by capacity, floor or equipment. Select several equipment options if you need them together. Studio is inactive, so you cannot book it.
+2. Reserve Atlas for a future time. Choose an organizer, add a title and enter the number of attendees.
+3. Try booking the same room at the same time. Then try booking that organizer into another room at the same time. Both should be rejected with a clear explanation.
+4. Open Reservations to edit or cancel a future booking.
+5. Find Engineering sync, seeded as an ongoing meeting at server startup. Check in, reserve more time, or end it early.
+6. Open People for active reservation counts and Usage for the room report.
+
+Extra time creates a separate, linked booking. It must fit the room's schedule and the organizer's schedule. Ending the original meeting early does not cancel that extra booking; cancel it separately if you no longer need it.
+
+All times are entered in your device's timezone and sent to the API as UTC instants. Use Refresh workspace to fetch the latest state. An unattended tab does not poll the API.
+
+The demo uses synthetic data and in-memory storage. Restarting the server resets it. Seeded dates are relative to startup, so the ongoing example eventually ends.
+
+## The part I cared about
+
+Getting a booking onto a screen is one part of the work. Deciding what happens when two requests arrive together, or when a saved booking loses its confirmation on the way back, takes a little more thought.
+
+### Two people want the same slot
+
+Booking writes share a single-process gate. Validation and saving happen inside that gate, so simultaneous requests cannot both pass a conflict check for the same slot.
+
+That guarantee matches the assignment's in-memory storage model. A deployment with multiple instances would need shared persistent storage and database-level conflict protection.
+
+### The booking saved. The response disappeared.
+
+Create, edit and additional-time requests carry a request identifier. The server stores a receipt so the client can recover the confirmation instead of immediately creating another booking.
+
+Receipts last for the current server process. They do not survive a restart, and lifecycle actions such as cancellation do not use this recovery mechanism.
+
+### A booked room is not proof of a used room
+
+The usage report separates scheduled time, reported use, unconfirmed time and time released by early completion.
+
+Manual check-in supplies a limited estimate of use. Missing check-in does not prove a no-show. Reaching the scheduled end does not prove that everyone left. The report makes those limits explicit.
+
+[Read the metric definitions](docs/usage-report.md).
+
+## What is included
+
+| Area | What you can do |
+| --- | --- |
+| Rooms | Browse rooms, see equipment and active status, filter by capacity, floor and multiple equipment options |
+| People | View organizers, unique IDs and active reservation counts calculated by the backend |
+| Reservations | Create, edit, cancel, check in, reserve additional time and end early |
+| Filters | Find reservations by room, organizer, status and date range |
+| Usage | Compare scheduled, reported, unconfirmed and early-released time |
+| Interface | Use desktop or mobile layouts, keyboard-accessible dialogs and clear loading, empty and error states |
+
+All seven required booking rules are enforced in the backend:
+
+- A reservation can last up to seven days. Exactly seven days is valid.
+- Room bookings cannot overlap.
+- An organizer cannot have overlapping meetings, even in different rooms.
+- The start must be in the future, and the end must follow the start.
+- Attendees cannot exceed the room's capacity.
+- A reservation can start up to 90 days ahead.
+- Inactive rooms cannot be booked.
+
+Adjacent bookings are allowed: one meeting can start exactly when another ends. Cancelled reservations do not block availability, and early completion releases the unused remainder.
+
+The duration and advance limits are configurable.
+
+## Run it locally
+
+You need Git, the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) and [Node.js](https://nodejs.org/en/download). Supported Node versions are 22.22.2+, 24.15+ or 26+. Install the .NET SDK, not just the runtime.
+
+```powershell
+git clone https://github.com/MerveilleDivine/room_reservation_system.git
+cd room_reservation_system
+```
+
+Start the API from the repository root:
 
 ```powershell
 dotnet restore RoomReservations.slnx
 dotnet run --project src/RoomReservations.Api
 ```
 
-Terminal 2, from the repository root:
+In a second terminal, also from the repository root:
 
 ```powershell
 cd web
@@ -27,94 +99,64 @@ npm ci
 npm run dev
 ```
 
-Open http://127.0.0.1:5173. The frontend forwards `/api` requests to http://127.0.0.1:5080. A health check is available at http://localhost:5080/api/health. No secrets, database server, accounts or environment files are needed.
+Open [http://127.0.0.1:5173](http://127.0.0.1:5173).
 
-If `dotnet` is not recognized after installation, restart the VS Code terminal. If the site reports that it cannot reach the API, check that terminal 1 is still running. The UI deliberately does not substitute fake data for a failed API connection.
+Vite forwards `/api` requests to the ASP.NET server at `http://127.0.0.1:5080`. You can check the API at [http://localhost:5080/api/health](http://localhost:5080/api/health).
 
-VS Code's **Terminal → Run Task** menu also includes API, web and test commands. C# Dev Kit can discover the solution and launch the API through its normal project debugging workflow.
+There are no secrets, environment files or database accounts to configure.
 
-## First demo
+If `dotnet` is not recognized after installation, restart your terminal. If the frontend cannot reach the API, check that the first terminal is still running.
 
-1. Browse the four seeded rooms. Filter by capacity, floor and one or more equipment options. Inactive Studio cannot be booked.
-2. Book Atlas with an organizer and a future time. Times are entered in your device's local timezone and sent to the API as UTC instants.
-3. On Reservations, edit or cancel a future booking. Try creating a second overlapping booking to see a readable backend error.
-4. Find the seeded **Engineering sync**, which starts 15 minutes before API startup. Use **Reserve more time** to add a linked future booking. It must fit both the room and organizer's schedules. The extra booking has its own check-in and cancellation.
-5. Check in to the ongoing meeting and end it early to exercise reported-use timestamps and room release. Ending it early keeps any additional booking reserved; cancel that future booking separately if it is no longer needed.
-6. Open People to see active reservation counts calculated by the API.
-7. Open Usage to compare scheduled, reported, unconfirmed and early-released time. The seeded past meetings give the report traceable examples. A check-in is an estimate, and a scheduled end is not evidence of actual departure.
+In VS Code, Terminal → Run Task also provides API, web and test commands. C# Dev Kit can discover the solution.
 
-Seed dates are relative to server startup. Restarting the API resets all demo data. No authentication is included because the brief explicitly excludes it. This is an assignment demo; do not use it for private or real office bookings.
+## Where things live
 
-## Hosted preview
+| Location | Responsibility |
+| --- | --- |
+| `src/RoomReservations.Api/Domain` | Entities and reservation lifecycle |
+| `src/RoomReservations.Api/Application` | Booking rules, services, usage calculations and DTO mapping |
+| `src/RoomReservations.Api/Infrastructure` | EF Core context, seed data and the write gate |
+| `src/RoomReservations.Api/Api` | HTTP endpoints and Problem Details errors |
+| `tests/RoomReservations.Api.Tests` | Backend rule, API, recovery and concurrency tests |
+| `web/src/api` | Typed API contracts and HTTP client |
+| `web/src/pages` | Page-level views and filtering |
+| `web/src/components` | Booking forms and reusable interface components |
+| `docs` | Requirements, decisions, assumptions and verification evidence |
 
-`Dockerfile.vercel` builds React and publishes the ASP.NET API into one non-root container. ASP.NET serves the built frontend and `/api` from the same origin. The .NET/EF Core InMemory implementation is also used online; no JavaScript replacement backend is involved.
+One API project, one test project and one frontend keep the structure manageable for this scope. Booking decisions and report calculations stay in the backend. React handles interaction and presentation.
 
-The container can be run locally with Docker:
+The [architecture notes](docs/architecture.md) explain the choices and their trade-offs.
 
-```powershell
-docker build --file Dockerfile.vercel --tag roomwise .
-docker run --rm --publish 8080:8080 roomwise
-```
+## Check the work
 
-Open http://localhost:8080. `vercel.json` explicitly selects the container service and routes every request to it. The hosted project sets `PORT=8080` and `AllowedHosts=localhost;127.0.0.1;*.vercel.app`; ASP.NET keeps its local-only host defaults for normal development. Vercel's container runtime is currently in beta. The app's required InMemory database belongs to one running process: restarts, idle shutdowns and separate instances have separate demo data. This preview is for trying the assignment, not durable shared storage.
-
-CI builds this same container and runs all eight browser scenarios against its single port, in addition to testing the two-server development setup. `PLAYWRIGHT_BASE_URL` targets an already running app and skips starting development servers. Run this mutating suite only against a disposable demo with fresh seed data.
-
-## Checks
-
-From the root:
+Backend, from the repository root:
 
 ```powershell
 dotnet test RoomReservations.slnx
 ```
 
-From `web`:
+Frontend, from `web`:
 
 ```powershell
 npm run check
 ```
 
-`npm run check` runs strict TypeScript checking, a production build, the frontend tests, and formatting checks. `npm run test:watch` runs frontend tests while developing. GitHub Actions also runs the real browser suite against ASP.NET and EF Core InMemory.
+The frontend command checks TypeScript, builds the production app, runs unit tests and checks formatting. For development, `npm run test:watch` runs tests as you work.
 
-To run the browser suite locally, install the SDK, close the two development servers so their ports are free, and run from `web`:
+For browser tests, close the development servers so their ports are free, then run from `web`:
 
 ```powershell
 npx playwright install chromium
 npm run test:e2e
 ```
 
-Playwright starts both servers with fresh in-memory data. The suite covers create/reload/edit/cancel, server-side conflicts, additional time, recovery of a lost confirmation, check-in/early completion, usage filtering, mobile layout, keyboard focus and simultaneous HTTP booking requests. Its config uses Europe/Vilnius for browser-local date entry.
+Playwright starts the real API and frontend with fresh seed data. The eight scenarios cover booking, reload, editing, cancellation, conflicts, additional time, lost confirmations, check-in, early completion, usage filtering, mobile layout, keyboard focus and concurrent requests.
 
-The current implementation passes 80 backend tests, 28 frontend unit tests and eight real Chromium scenarios in each server setup. See [verification.md](docs/verification.md) for the tested source commit, CI run and remaining environment check.
+GitHub Actions checks both the two-server development setup and the published container.
 
-## Current scope
+The latest local frontend check passed all 29 tests, TypeScript, the production build and formatting. The recorded full CI verification passed 80 backend tests and eight Chromium scenarios in each server setup. See the [verification record](docs/verification.md) for its source revision, run links and environment limits.
 
-| Area               | First milestone                                                                                          |
-| ------------------ | -------------------------------------------------------------------------------------------------------- |
-| Rooms              | Seed data, active/inactive status, capacity/floor/multiple-equipment filters                             |
-| Users              | Seed data, unique IDs, backend-calculated active reservation counts                                      |
-| Reservations       | Create, edit, cancel, check in, reserve more time, end early, filter by room/organizer/status/date range |
-| Rules              | Seven specified rules, configurable duration/advance limits, stable error codes                          |
-| Reliability        | Injectable clock, single-process write gate, booking request receipts, validation and concurrency tests  |
-| UI                 | Responsive pages, native modal, loading/empty/error states, UTC conversion                               |
-| Usage              | Backend interval-union calculations, report filters, reported/unconfirmed distinction                    |
-| Browser coverage   | Real React → ASP.NET → EF flow, desktop/mobile and keyboard checks                                       |
-| Optional next work | Calendar/timeline, PDF export, explicit office timezone/DST policy                                       |
-
-## Structure
-
-- `src/RoomReservations.Api/Domain`: entities and reservation lifecycle.
-- `src/RoomReservations.Api/Application`: booking policy, validation, service and DTO mapping.
-- `src/RoomReservations.Api/Infrastructure`: EF Core context, seed data and the single-process write gate.
-- `src/RoomReservations.Api/Api`: HTTP endpoints and Problem Details errors.
-- `tests/RoomReservations.Api.Tests`: deterministic boundary, API and concurrency tests.
-- `web/src/api`: the typed HTTP boundary.
-- `web/src/pages` and `web/src/components`: page-level filtering and reusable presentation/form components.
-- `docs`: requirements, assumptions, architecture, delivery plan and verification evidence.
-
-This is intentionally one API project, one test project and one frontend. There is no authentication layer, microservice split, generic repository wrapper or messaging system to maintain for this scope.
-
-## Configuration
+## Change the booking policy
 
 Edit `src/RoomReservations.Api/appsettings.json`:
 
@@ -127,23 +169,34 @@ Edit `src/RoomReservations.Api/appsettings.json`:
 }
 ```
 
-Configuration is validated on startup. The frontend reads the policy from `/api/booking-policy`; it does not hard-code the displayed limits.
+Configuration is validated at startup. The frontend reads the displayed limits from `/api/booking-policy`.
 
-## Clone from GitHub
+A day here means 24 elapsed hours. An explicit office timezone and a policy for ambiguous daylight-saving times would be needed for broader scheduling requirements.
 
-To open the project in VS Code from a fresh checkout:
+## Run the container
 
 ```powershell
-git clone https://github.com/MerveilleDivine/room_reservation_system.git
-cd room_reservation_system
-code .
+docker build --file Dockerfile.vercel --tag roomwise .
+docker run --rm --publish 8080:8080 roomwise
 ```
 
-Follow the two-terminal startup instructions above. The repository contains the solution and engineering notes; the employer's original assignment and correspondence are kept outside the source tree.
+Open [http://localhost:8080](http://localhost:8080).
 
-For submission, include both the GitHub repository and live demo links. If the repository is private, grant the reviewers access before sending it.
+The container builds React and publishes ASP.NET into one non-root image. ASP.NET serves the frontend and API from the same origin. The hosted demo uses this same ASP.NET and EF Core InMemory implementation.
 
-## Engineering notes
+`vercel.json` routes requests to the container service. The hosted configuration uses `PORT=8080` and `AllowedHosts=localhost;127.0.0.1;*.vercel.app`.
+
+In-memory data belongs to one running process. Restarts, idle shutdowns and separate instances have separate data. This is a public assignment demo, so use sample information.
+
+To target an already running disposable instance with browser tests, set `PLAYWRIGHT_BASE_URL`. The suite changes booking data and expects fresh seeds.
+
+## What I would do next
+
+Calendar/timeline views and PDF export are optional features from the brief and are not implemented.
+
+For a real shared office deployment, the next work would include persistent storage, database-backed concurrency protection, authentication and an explicit office timezone policy. Those changes would need requirements beyond this assignment.
+
+## A little more detail
 
 - [Requirements and acceptance criteria](docs/requirements.md)
 - [Architecture and decisions](docs/architecture.md)
@@ -151,3 +204,4 @@ For submission, include both the GitHub repository and live demo links. If the r
 - [API contract](docs/api.md)
 - [Verification record](docs/verification.md)
 - [Usage report definitions](docs/usage-report.md)
+- [Workspace photograph credit](web/public/images/CREDITS.md)
