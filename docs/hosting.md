@@ -19,7 +19,9 @@ Open `http://localhost:8080`. Create, refresh, edit and cancel a booking. The re
 
 ## Hosted release
 
-Connect Render to the repository and create the web service from `render.yaml`. Keep the free single-instance plan. After CI passes, deploy the tested revision and verify the public URL:
+The [live app](https://roomwise-reservations.onrender.com/) is service `srv-dbgst9dg1s2s73c8col0` in the approved `My Workspace`, using the free Frankfurt compute plan with one instance. It was created directly through Render's connector. The deployed source is `7b2066d4cac6ffa3d17ec86c9ec42fa7082891f5`, from `fix/hosted-booking-reliability`. Auto-deploy is off so repository documentation updates do not reset the demo. The initial service uses Render's default TCP readiness check; `/api/health` was separately verified to return 200. The reusable Blueprint additionally specifies HTTP health checks.
+
+For future releases, deploy an explicitly tested revision from the configured branch. Preserve the single-instance limit. The acceptance checks are:
 
 1. Edit and cancel a preloaded reservation.
 2. Create a reservation and find it in Upcoming, including after browser reload.
@@ -35,6 +37,6 @@ A server restart, redeployment or idle shutdown resets the synthetic data and re
 
 Selectable profiles demonstrate the requested member/admin workflows without account infrastructure. They are not authenticated identities. Use sample data only.
 
-The old Vercel URL is a previous release and must not be presented as the fixed version. Once the new host passes its checks, publish its verified URL and retire or redirect the old demo.
+The old Vercel URL forwards to the Render app using `vercel.json` and the static `legacy-redirect` page. It no longer runs the ASP.NET backend. The root Dockerfile continues to serve the real app on Render and locally.
 
 References: [Render free-service limits](https://render.com/docs/free), [scaling](https://render.com/docs/scaling), and [Blueprint fields](https://render.com/docs/blueprint-spec).

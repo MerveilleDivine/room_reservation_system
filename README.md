@@ -8,7 +8,7 @@ Roomwise handles the scheduling side of that problem: find a room, make a reserv
 
 I built Roomwise for an internship technical assignment using ASP.NET Core, EF Core InMemory, React and TypeScript.
 
-[Run locally](#run-it-locally) · [Architecture](docs/architecture.md) · [API](docs/api.md) · [Verification](docs/verification.md)
+[Try Roomwise](https://roomwise-reservations.onrender.com/) · [Run locally](#run-it-locally) · [Architecture](docs/architecture.md) · [API](docs/api.md) · [Verification](docs/verification.md)
 
 No account needed. Choose a profile in the header and start with what’s next.
 
@@ -198,9 +198,9 @@ Open [http://localhost:8080](http://localhost:8080).
 
 The container builds React and publishes ASP.NET into one non-root image. ASP.NET serves the frontend and API from the same origin. No database account, connection secret or additional service is required.
 
-For a hosted demo, `render.yaml` defines a free, single-instance Docker web service in Frankfurt, checks `/api/health`, and deploys after CI passes. Connect the repository in Render and select this Blueprint. The free service sleeps after idle periods; waking it may take about a minute and resets the in-memory demo. Only synthetic information belongs here.
+The [hosted demo](https://roomwise-reservations.onrender.com/) runs on Render's free single-instance service in Frankfurt. Releases are manual, after CI verification. `render.yaml` records a reusable service configuration. The free service sleeps after idle periods; waking it may take about a minute and resets the in-memory demo. Only synthetic information belongs here.
 
-Vercel's independently scaled server instances cannot share this process's memory. The API refuses to start there rather than presenting an inconsistent booking store. The old Vercel address is not the fixed release; use the verified single-instance URL once deployment is complete. See [hosting.md](docs/hosting.md).
+Vercel's independently scaled server instances cannot share this process's memory. The API refuses to start there rather than presenting an inconsistent booking store. The old Vercel address forwards to the single-instance app using a small static redirect page; it no longer runs a separate booking backend. See [hosting.md](docs/hosting.md).
 
 To target an already running disposable instance with browser tests, set `PLAYWRIGHT_BASE_URL`. The suite changes booking data and expects fresh seeds.
 

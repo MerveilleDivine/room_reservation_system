@@ -1,13 +1,14 @@
 # EF Core InMemory belongs to one process. The free plan has one instance.
 services:
   - type: web
-    name: roomwise
+    name: roomwise-reservations
     runtime: docker
     plan: free
     region: frankfurt
+    branch: fix/hosted-booking-reliability
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
-    autoDeployTrigger: checksPass
+    autoDeployTrigger: "off"
     envVars:
       - key: AllowedHosts
         value: "*.onrender.com;localhost;127.0.0.1"

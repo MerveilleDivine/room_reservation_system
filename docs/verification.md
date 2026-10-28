@@ -13,13 +13,15 @@ The app retains ASP.NET Core, EF Core InMemory and React. The external database 
 | Development browser | All 12 Chromium scenarios passed |
 | Published container browser | All 12 Chromium scenarios passed |
 
-This establishes the source's tested behavior within one API process. It does not establish that the public release is deployed. Render is connected, but its first deployment requires explicit workspace selection. The sole listed workspace is `My Workspace`; no service has been created yet.
+The [public release](https://roomwise-reservations.onrender.com/) is deployed and verified. Render deploy `dep-dbgstadg1s2s73c8cq0g` reached `live` on 28 October 2026 for source `7b2066d4cac6ffa3d17ec86c9ec42fa7082891f5` (the tested application plus verification documentation). It runs one free Docker instance in Frankfurt in the approved `My Workspace`.
+
+Hosted checks confirmed health, scoped member reads, denial of another member's details and usage view, create/read/reload/edit/cancel, History, confirmation replay, room/organizer overlap rejection and one winner for simultaneous overlapping requests. The live extension check advertised exactly two minutes, rejected three, accepted two and preserved the exact interval. Synthetic test bookings were cancelled afterward. The original preloaded reservation saved successfully through the browser. No application error logs were returned after verification.
 
 The regression coverage includes saved bookings in their chronological Upcoming page, private member reads, zero/two/seventeen-minute extension limits, partial-minute rejection, conflict recovery and lost HTTP confirmations. Browser scenarios also check editing, reload and cancellation of preloaded reservations at a 390 px mobile width, plus clearing a confirmation when filters hide its booking.
 
 A server restart resets synthetic data and receipts. Browser refreshes must preserve them while the single server runs. Profile selection demonstrates visibility without authentication, as the brief allows. See [hosting.md](hosting.md) for the release setup and checks.
 
-The old public Vercel site still runs the previous release. The fixed public URL will be recorded only after the single-instance host is deployed and verified.
+The old Vercel address is retained as a static forwarding page to the Render app. It no longer hosts an independent in-memory booking backend. The final repository changes update release documentation and this legacy redirect; they do not change the tested application.
 
 ## Earlier verification
 
