@@ -2,8 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using RoomReservations.Api.Api;
 using RoomReservations.Api.Application;
 using RoomReservations.Api.Infrastructure;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<Microsoft.AspNetCore.Routing.RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
@@ -14,15 +12,9 @@ builder.Services.AddOptions<BookingOptions>()
     .Validate(options => options.MaximumDurationDays is > 0 and <= 365, "Duration must be between 1 and 365 days.")
     .Validate(options => options.MaximumAdvanceDays is > 0 and <= 3650, "Advance window must be between 1 and 3650 days.")
     .ValidateOnStart();
-var connectionString = builder.Configuration.GetConnectionString("Reservations");
-if ((builder.Configuration.GetValue<bool>("Storage:RequireShared") ||
-     Environment.GetEnvironmentVariable("VERCEL") == "1") && string.IsNullOrWhiteSpace(connectionString))
-    throw new InvalidOperationException("The hosted demo requires shared storage. Configure ConnectionStrings__Reservations.");
-builder.Services.AddDbContext<ReservationsDbContext>(options =>
-{
-    if (string.IsNullOrWhiteSpace(connectionString)) options.UseInMemoryDatabase("room-reservations");
-    else options.UseNpgsql(connectionString);
-});
+if (Environment.GetEnvironmentVariable("VERCEL") == "1")
+    throw new InvalidOperationException("This InMemory demo requires one server process. Use the single-instance host in render.yaml or run locally.");
+builder.Services.AddDbContext<ReservationsDbContext>(options => options.UseInMemoryDatabase("room-reservations"));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<BookingWriteGate>();
 builder.Services.AddScoped<BookingRules>();
@@ -45,16 +37,7 @@ app.MapReservationApi();
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ReservationsDbContext>();
-    await using var lease = await scope.ServiceProvider.GetRequiredService<BookingWriteGate>()
-        .AcquireAsync(db, CancellationToken.None);
-    if (db.Database.IsNpgsql())
-    {
-        var exists = await db.Database.SqlQueryRaw<int>(
-            "SELECT CASE WHEN to_regclass('\"Rooms\"') IS NULL THEN 0 ELSE 1 END AS \"Value\"").SingleAsync();
-        if (exists == 0) await db.GetService<IRelationalDatabaseCreator>().CreateTablesAsync();
-    }
     await SeedData.InitializeAsync(db, scope.ServiceProvider.GetRequiredService<TimeProvider>());
-    await lease.CommitAsync(CancellationToken.None);
 }
 app.Run();
 

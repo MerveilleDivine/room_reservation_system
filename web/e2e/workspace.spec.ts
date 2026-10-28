@@ -38,7 +38,17 @@ async function fillBooking(page: Page, value: ReturnType<typeof booking>) {
   await page
     .getByRole('combobox', { name: 'Organizer', exact: true })
     .selectOption(value.organizerId);
-  const local = await page.evaluate(
+  const local = await localSlot(page, value);
+  await page.getByLabel('Starts', { exact: true }).fill(local.start);
+  await page.getByLabel('Ends', { exact: true }).fill(local.end);
+  await page.getByLabel('Number of attendees').fill(String(value.attendees));
+}
+
+async function localSlot(
+  page: Page,
+  value: { startUtc: string; endUtc: string },
+) {
+  return page.evaluate(
     ({ start, end }) => {
       const format = (iso: string) => {
         const date = new Date(iso);
@@ -59,9 +69,6 @@ async function fillBooking(page: Page, value: ReturnType<typeof booking>) {
     },
     { start: value.startUtc, end: value.endUtc },
   );
-  await page.getByLabel('Starts', { exact: true }).fill(local.start);
-  await page.getByLabel('Ends', { exact: true }).fill(local.end);
-  await page.getByLabel('Number of attendees').fill(String(value.attendees));
 }
 
 test('create, reload, edit and cancel a booking through the real API', async ({
@@ -631,10 +638,67 @@ test('a new booking is visible immediately after history or pagination, even far
     await expect(
       page.getByRole('heading', { name: 'Roadmap review', exact: true }),
     ).toHaveCount(0);
+    await page.getByRole('button', { name: 'Filters', exact: true }).click();
+    await page.getByLabel('Room', { exact: true }).selectOption(birch);
+    await expect(
+      page.getByRole('heading', { name: 'You’re booked', exact: true }),
+    ).toHaveCount(0);
+    await expect(title).toHaveCount(0);
+    await page
+      .getByRole('button', { name: 'Clear filters', exact: true })
+      .first()
+      .click();
+    await expect(
+      page.getByRole('button', { name: 'Upcoming', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
   } finally {
     for (const id of createdIds)
       await request.post(`/api/reservations/${id}/cancel`);
   }
+});
+
+test('preloaded reservations can be edited, reloaded and cancelled on mobile', async ({
+  page,
+  request,
+}, info) => {
+  const seed = (
+    (await (await request.get('/api/reservations')).json()) as Reservation[]
+  ).find((meeting) => meeting.title === 'Product planning')!;
+  expect(seed).toBeDefined();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByLabel('Current profile').selectOption(alex);
+  const initial = page.getByRole('article').filter({
+    has: page.getByRole('heading', { name: seed.title, exact: true }),
+  });
+  await initial.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByLabel('Meeting title').fill('Updated sample reservation');
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  const updated = page.getByRole('article').filter({
+    has: page.getByRole('heading', {
+      name: 'Updated sample reservation',
+      exact: true,
+    }),
+  });
+  await expect(updated).toBeVisible();
+  await page.reload();
+  await expect(updated).toBeVisible();
+  await page.screenshot({
+    path: info.outputPath('seed-booking-mobile.png'),
+    fullPage: true,
+  });
+  page.once('dialog', (dialog) => dialog.accept());
+  await updated.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(updated).toHaveCount(0);
+  await page.getByRole('button', { name: 'History', exact: true }).click();
+  await page.getByRole('button', { name: 'Filters', exact: true }).click();
+  const local = await localSlot(page, seed);
+  await page.getByLabel('Reservations from').fill(local.start);
+  await page.getByLabel('Reservations until').fill(local.end);
+  await expect(updated.getByText('Cancelled', { exact: true })).toBeVisible();
+  await expect(
+    updated.getByRole('button', { name: 'Edit', exact: true }),
+  ).toHaveCount(0);
 });
 
 test('room search checks the selected time and carries it into the booking', async ({

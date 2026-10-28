@@ -93,18 +93,26 @@ export function ReservationsPage({
   function changeView(next: 'upcoming' | 'history') {
     setView(next);
     setStatus('');
+    resetPage();
+  }
+  function resetPage() {
     setFocusId(null);
     setPage(1);
     onDismissSaved();
   }
-  function clearFilters() {
+  function changePage(next: number) {
     setFocusId(null);
+    setPage(next);
+    onDismissSaved();
+    scheduleHeading.current?.focus();
+  }
+  function clearFilters() {
     setRoom('');
     setOrganizer('');
     setStatus('');
     setFrom('');
     setTo('');
-    setPage(1);
+    resetPage();
   }
   const items = feed.data?.items ?? [];
 
@@ -179,9 +187,8 @@ export function ReservationsPage({
               <select
                 value={room}
                 onChange={(event) => {
-                  setFocusId(null);
                   setRoom(event.target.value);
-                  setPage(1);
+                  resetPage();
                 }}
               >
                 <option value="">All rooms</option>
@@ -198,9 +205,8 @@ export function ReservationsPage({
                 <select
                   value={organizer}
                   onChange={(event) => {
-                    setFocusId(null);
                     setOrganizer(event.target.value);
-                    setPage(1);
+                    resetPage();
                   }}
                 >
                   <option value="">All organizers</option>
@@ -218,9 +224,8 @@ export function ReservationsPage({
                 <select
                   value={status}
                   onChange={(event) => {
-                    setFocusId(null);
                     setStatus(event.target.value);
-                    setPage(1);
+                    resetPage();
                   }}
                 >
                   <option value="">All history</option>
@@ -236,9 +241,8 @@ export function ReservationsPage({
                 type="datetime-local"
                 value={from}
                 onChange={(event) => {
-                  setFocusId(null);
                   setFrom(event.target.value);
-                  setPage(1);
+                  resetPage();
                 }}
               />
             </label>
@@ -249,9 +253,8 @@ export function ReservationsPage({
                 type="datetime-local"
                 value={to}
                 onChange={(event) => {
-                  setFocusId(null);
                   setTo(event.target.value);
-                  setPage(1);
+                  resetPage();
                 }}
               />
             </label>
@@ -336,22 +339,14 @@ export function ReservationsPage({
                 <button
                   className="button secondary"
                   disabled={page <= 1}
-                  onClick={() => {
-                    setFocusId(null);
-                    setPage((value) => value - 1);
-                    scheduleHeading.current?.focus();
-                  }}
+                  onClick={() => changePage(page - 1)}
                 >
                   Previous
                 </button>
                 <button
                   className="button secondary"
                   disabled={page >= totalPages}
-                  onClick={() => {
-                    setFocusId(null);
-                    setPage((value) => value + 1);
-                    scheduleHeading.current?.focus();
-                  }}
+                  onClick={() => changePage(page + 1)}
                 >
                   Next
                 </button>

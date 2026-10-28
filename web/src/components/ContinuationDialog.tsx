@@ -110,7 +110,8 @@ export function ContinuationDialog({ reservation, onSave, onClose }: Props) {
           <h3>{reservation.title}</h3>
           <p>
             {reservation.roomName} · {reservation.organizerName} ·{' '}
-            {reservation.attendees} people
+            {reservation.attendees}{' '}
+            {reservation.attendees === 1 ? 'person' : 'people'}
           </p>
           <p>
             Extra time starts {formatDate(reservation.endUtc)} at{' '}

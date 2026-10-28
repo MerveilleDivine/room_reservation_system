@@ -74,7 +74,7 @@ export function App() {
   const current = pages[page];
   const person = people.data?.find((item) => item.id === profile);
   const displayName = profile === 'admin' ? 'Administrator' : person?.firstName;
-  const [today] = useState(() => new Date());
+  const today = new Date();
   const dateLabel = new Intl.DateTimeFormat(undefined, {
     weekday: 'long',
     month: 'long',
@@ -95,6 +95,7 @@ export function App() {
     setPending(true);
     try {
       const reservation = await saveReservation(request, id, submissionKey);
+      setActionError(null);
       setSaved({ reservation, label: id ? 'Changes saved' : 'You’re booked' });
       setScheduleVersion((value) => value + 1);
       setForm(null);
@@ -118,6 +119,7 @@ export function App() {
         additionalMinutes,
         submissionKey,
       );
+      setActionError(null);
       setSaved({ reservation, label: 'Extra time reserved' });
       setScheduleVersion((value) => value + 1);
       setPage('reservations');
@@ -169,6 +171,7 @@ export function App() {
       setActionError(
         error instanceof Error ? error : new Error('Action failed.'),
       );
+      refresh();
     } finally {
       setPending(false);
     }
@@ -254,6 +257,7 @@ export function App() {
               title="Refresh"
               onClick={() => {
                 setSaved(null);
+                setActionError(null);
                 refresh();
               }}
             >
@@ -330,6 +334,7 @@ export function App() {
               onBook={() => setForm({ reservation: null })}
               onRefresh={() => {
                 setSaved(null);
+                setActionError(null);
                 refresh();
               }}
               profile={profile}

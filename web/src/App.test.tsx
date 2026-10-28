@@ -129,4 +129,45 @@ describe('workspace', () => {
       screen.getByRole('button', { name: 'New reservation' }),
     ).toBeDisabled();
   });
+
+  it('refreshes a stale schedule after an action fails and clears that error on explicit refresh', async () => {
+    const fetchMock = mockApi();
+    const normalReply = fetchMock.getMockImplementation()!;
+    let cancelledElsewhere = false;
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith('/cancel')) {
+        cancelledElsewhere = true;
+        return new Response(
+          JSON.stringify({
+            code: 'RESERVATION_NOT_ACTIVE',
+            detail: 'This reservation is no longer active.',
+          }),
+          { status: 409 },
+        );
+      }
+      if (url.startsWith('/api/reservation-feed') && cancelledElsewhere)
+        return new Response(
+          JSON.stringify({ items: [], totalCount: 0, page: 1, pageSize: 6 }),
+        );
+      return normalReply(url);
+    });
+    vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
+    render(<App />);
+    await screen.findByRole('heading', { name: 'Planning' });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'no longer active',
+    );
+    await screen.findByRole('heading', {
+      name: 'A little room in your schedule.',
+    });
+    expect(
+      screen.queryByRole('heading', { name: 'Planning' }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Refresh schedule' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument(),
+    );
+  });
 });

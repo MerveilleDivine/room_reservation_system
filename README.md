@@ -24,7 +24,7 @@ No account needed. Choose a profile in the header and start with what’s next.
 
 Times use your device's timezone and are sent to the API as UTC instants. Room availability is a snapshot; saving repeats all conflict checks. Extra time is a separate linked booking and must fit the room and organizer schedules.
 
-Local development uses synthetic in-memory data, which resets on restart. Shared hosted storage is configured separately; seed data is inserted only into an empty store and has stable IDs. The ongoing example eventually ends.
+The app uses synthetic EF Core InMemory data in one server process. Browser refreshes preserve bookings while the process runs. A server restart resets the demo; seed IDs remain stable, and the ongoing example eventually ends.
 
 [Read the product design and research](docs/product-design.md) for the reasoning behind the flow.
 
@@ -42,19 +42,19 @@ Getting a booking onto a screen is one part of the work. Deciding what happens w
 
 ### Two people want the same slot
 
-InMemory writes share a single-process gate. With PostgreSQL, validation and saving also hold a transaction-level advisory lock shared by every server using the same schema. The second request checks the first request's committed result before saving.
+Booking writes share a process-wide gate. Validation and saving run within that gate, so concurrent requests cannot both reserve overlapping room or organizer intervals. The gate is released on both success and failure.
 
-The broad database lock is deliberate for this small demo: easy to audit, with lower write throughput than per-resource locks or database exclusion constraints. It protects organizer conflicts across different rooms as well as room conflicts.
+One API process is a deliberate deployment constraint of the required InMemory provider. The hosted configuration uses one instance. A distributed service would need different storage and concurrency requirements.
 
 ### The booking saved. The response disappeared.
 
 Create, edit and additional-time requests carry a request identifier. The server stores a receipt so the client can recover the confirmation instead of immediately creating another booking.
 
-InMemory receipts last for the current server process. PostgreSQL receipts commit in the same transaction as bookings and survive server replacement. Lifecycle actions such as cancellation do not use this recovery mechanism.
+Receipts last for the current server process. They support retrying a lost confirmation without duplicating the booking, but do not survive server replacement. Lifecycle actions refresh the schedule after an error so stale controls do not remain on screen.
 
 ### A meeting needs two more minutes
 
-The extra-time form asks the server for the exact free gap before the next room or organizer booking. A two-minute gap allows two minutes; an adjacent booking allows none. It shows the blocking interval without the next meeting's title or organizer. Saving rechecks the gap under the write transaction because availability is a snapshot rather than a hold.
+The extra-time form asks the server for the exact free gap before the next room or organizer booking. A two-minute gap allows two minutes; an adjacent booking allows none. It shows the blocking interval without the next meeting's title or organizer. Saving rechecks the gap under the booking gate because availability is a snapshot rather than a hold.
 
 ### A booked room is not proof of a used room
 
@@ -168,7 +168,7 @@ Playwright starts the real API and frontend with fresh seed data. The browser sc
 
 GitHub Actions checks both the two-server development setup and the published container.
 
-See the [verification record](docs/verification.md) for source revisions, test counts, run links and environment limits. CI also runs independent API hosts against real PostgreSQL to check cross-server editing, restart persistence, receipt recovery and competing writes.
+See the [verification record](docs/verification.md) for source revisions, test counts, run links and environment limits. Both browser setups use the real ASP.NET API and the assignment-required EF Core InMemory provider.
 
 ## Change the booking policy
 
@@ -190,19 +190,17 @@ A day here means 24 elapsed hours. An explicit office timezone and a policy for 
 ## Run the container
 
 ```powershell
-docker build --file Dockerfile.vercel --tag roomwise .
-docker run --rm --env Storage__RequireShared=false --publish 8080:8080 roomwise
+docker build --tag roomwise .
+docker run --rm --publish 8080:8080 roomwise
 ```
 
 Open [http://localhost:8080](http://localhost:8080).
 
-The container builds React and publishes ASP.NET into one non-root image. ASP.NET serves the frontend and API from the same origin. Containers require shared storage by default. The explicit override above runs a disposable single-process InMemory demo locally.
+The container builds React and publishes ASP.NET into one non-root image. ASP.NET serves the frontend and API from the same origin. No database account, connection secret or additional service is required.
 
-`vercel.json` routes requests to the container service. The hosted configuration uses `PORT=8080` and `AllowedHosts=localhost;127.0.0.1;*.vercel.app`.
+For a hosted demo, `render.yaml` defines a free, single-instance Docker web service in Frankfurt, checks `/api/health`, and deploys after CI passes. Connect the repository in Render and select this Blueprint. The free service sleeps after idle periods; waking it may take about a minute and resets the in-memory demo. Only synthetic information belongs here.
 
-For hosted use, set the server-only `ConnectionStrings__Reservations` secret to a PostgreSQL connection string. Use an isolated database or schema, an application-specific role and separate production/preview stores. The role needs schema/table creation for initial bootstrap. Tables are created and seeded once under the shared transaction lock. This bootstrap does not upgrade an existing schema; future model changes require a reviewed migration.
-
-The assignment's default provider remains EF Core InMemory when running directly without a connection string. A hosted container refuses to start without shared storage. Do not disable that check on a distributed deployment. Use synthetic data because selectable profiles do not authenticate users.
+Vercel's independently scaled server instances cannot share this process's memory. The API refuses to start there rather than presenting an inconsistent booking store. The old Vercel address is not the fixed release; use the verified single-instance URL once deployment is complete. See [hosting.md](docs/hosting.md).
 
 To target an already running disposable instance with browser tests, set `PLAYWRIGHT_BASE_URL`. The suite changes booking data and expects fresh seeds.
 

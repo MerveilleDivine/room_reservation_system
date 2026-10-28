@@ -35,7 +35,7 @@ public sealed class ExtraTimeService(ReservationsDbContext db, BookingRules rule
 {
     public async Task<ExtraTimeDto> ReadAsync(Guid id, CancellationToken cancellationToken)
     {
-        await using var lease = await gate.AcquireAsync(db, cancellationToken);
+        using var lease = await gate.EnterAsync(cancellationToken);
         var original = await db.Reservations.AsNoTracking().SingleOrDefaultAsync(r => r.Id == id, cancellationToken)
             ?? throw new BookingException("RESERVATION_NOT_FOUND", "This reservation could not be found.", 404);
         await profile.RequireAccessAsync(db, original.OrganizerId, cancellationToken);

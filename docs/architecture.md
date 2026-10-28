@@ -20,9 +20,9 @@ These are folders within one API project, not separate deployable services. Extr
 
 **Consequences:** this is not a relational database or a production persistence strategy. Referential checks are explicit. A singleton write gate protects validation plus save only within this one API process. InMemory does not supply the relational guarantees needed for multiple deployed instances.
 
-**Hosted provider:** setting `ConnectionStrings__Reservations` selects Npgsql/PostgreSQL. The container requires this shared store. Every booking write takes a transaction-level advisory lock scoped to `current_schema()`, then validates and saves at Read Committed isolation. Independent processes therefore see the previous committed write before checking overlaps. Bookings and idempotency receipts commit together. The process semaphore still protects InMemory and limits concurrent database operations per host.
+**Hosting decision:** run the same InMemory code in one server process, with React assets served by ASP.NET. `render.yaml` selects Render's free single-instance service. A database service, distributed locks and schema migrations are unnecessary for this assignment. Server restarts reset the synthetic data; ordinary browser refreshes do not. The API rejects Vercel execution because independent instances would create inconsistent stores.
 
-The broad schema lock trades throughput for a small, auditable conflict mechanism that covers room and organizer conflicts together. A larger deployment should use finer-grained locking or relational exclusion constraints with explicit load testing. CI starts independent API hosts against a real PostgreSQL service to verify edits, persistence, recovery and concurrent rejection. An isolated schema is initialized once under the lock; schema evolution requires migrations rather than changing an existing live model with this bootstrap.
+`BookingWriteGate.EnterAsync` returns a disposable lease. A `using` scope releases the semaphore even after failed validation or cancellation, keeping the booking decision and save in one protected operation. This remains a demo-scoped concurrency mechanism, not a distributed guarantee.
 
 Reference: [Microsoft EF Core InMemory guidance](https://learn.microsoft.com/en-us/ef/core/providers/in-memory/).
 
@@ -59,7 +59,7 @@ The usage report labels scheduled, reported and unconfirmed minutes separately. 
 
 **Tradeoff:** no persistent client cache or router yet. Reloading returns to the personal upcoming schedule. A query library or router would become useful for persistent caching, deep links or more complex navigation.
 
-**Refresh:** mutation success reloads API-derived state, and the Refresh workspace button reloads the current view on demand. There is no periodic API polling: an unattended demo tab must not keep a serverless container awake. Displayed statuses and allowed actions describe the last response. Backend checks remain authoritative if a button's availability changes between refresh and click.
+**Refresh:** mutation success reloads API-derived state, and the Refresh workspace button reloads the current view on demand. There is no periodic API polling: an unattended demo tab must not generate background traffic. Displayed statuses and allowed actions describe the last response. Backend checks remain authoritative if a button's availability changes between refresh and click.
 
 ## ADR 6: predictable failures
 
@@ -110,7 +110,7 @@ React derives action visibility from the selected profile and the API's lifecycl
 
 The personal upcoming schedule is the application entry point. `ReservationFeedService` provides explicit upcoming/history views, stable sorting, organizer/room/status/date filtering and bounded pagination in one read snapshot. The existing unpaginated reservations endpoint keeps its array contract for integrations and tests. Upcoming includes ongoing Booked reservations; naturally completed and cancelled records appear only in History.
 
-A successful mutation returns the committed DTO for a short confirmation above the feed. The booking stays in the canonical chronological list; `focusId` resolves its actual page instead of removing the row or creating a separate editable copy. Saving resets irrelevant filters; switching profiles or views clears confirmation state. The API hook cancels superseded requests and hides data belonging to an old query while a new one loads.
+A successful mutation returns the committed DTO for a short confirmation above the feed. The booking stays in the canonical chronological list; `focusId` resolves its actual page instead of removing the row or creating a separate editable copy. Saving resets irrelevant filters; switching profiles, pages or filters clears confirmation state. The API hook cancels superseded requests and hides data belonging to an old query while a new one loads.
 
 `RoomAvailabilityService` evaluates a chosen interval against the same time and overlap policies as booking writes. The room finder carries its checked room and interval into the form. Every search, including unchanged dates, requests a fresh snapshot. Changing draft dates disables booking until searched. An unavailable lookup is not shown as proof that a room is booked. The write gate still revalidates conflicts when the booking is saved.
 

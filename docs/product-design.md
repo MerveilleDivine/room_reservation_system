@@ -39,6 +39,6 @@ A short confirmation appears above the chronological schedule. The newly saved b
 
 ## Boundaries
 
-Availability is a snapshot, not a temporary hold. Saving repeats validation under the write gate. Selectable sample profiles continue to model ownership without account authentication. Local storage remains EF Core InMemory as required by the assignment. Hosted storage requires PostgreSQL so independent servers share bookings. Member reads return only that member's details; administrator views remain available through the synthetic profile model.
+Availability is a snapshot, not a temporary hold. Saving repeats validation under the write gate. Selectable sample profiles continue to model ownership without account authentication. Local storage remains EF Core InMemory as required by the assignment. Hosting uses one server instance, preserving the required InMemory storage model. Member reads return only that member's details; administrator views remain available through the synthetic profile model.
 
-The extra-time dialog shows the exact available whole-minute gap and anonymous blocking interval. It disables submission when no gap remains and rechecks after a conflicting save. The backend repeats validation inside the write transaction.
+The extra-time dialog shows the exact available whole-minute gap and anonymous blocking interval. It disables submission when no gap remains and rechecks after a conflicting save. The backend repeats validation inside the booking gate.

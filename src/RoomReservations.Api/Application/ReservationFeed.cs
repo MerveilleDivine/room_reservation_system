@@ -30,33 +30,29 @@ public sealed class ReservationFeedService(ReservationsDbContext db, TimeProvide
         }
 
         var organizerId = await profile.ScopeOrganizerAsync(db, query.OrganizerId, cancellationToken);
-        var lease = await gate.AcquireAsync(db, cancellationToken);
-        try
-        {
-            var now = clock.GetUtcNow();
-            var snapshot = await db.Reservations.AsNoTracking().Include(reservation => reservation.Room)
-                .Include(reservation => reservation.Organizer).ToListAsync(cancellationToken);
-            var filtered = snapshot.Where(reservation =>
-                (view == "upcoming"
-                    ? reservation.StatusAt(now) == ReservationStatus.Booked
-                    : reservation.StatusAt(now) != ReservationStatus.Booked) &&
-                (query.RoomId is null || reservation.RoomId == query.RoomId) &&
-                (organizerId is null || reservation.OrganizerId == organizerId) &&
-                (desiredStatus is null || reservation.StatusAt(now) == desiredStatus) &&
-                (query.From is null || reservation.EndUtc > query.From) &&
-                (query.To is null || reservation.StartUtc < query.To)).ToArray();
-            var ordered = view == "upcoming"
-                ? filtered.OrderBy(reservation => reservation.StartUtc).ThenBy(reservation => reservation.Id)
-                : filtered.OrderByDescending(reservation => reservation.StartUtc).ThenBy(reservation => reservation.Id);
-            var rows = ordered.ToArray();
-            var focusedIndex = query.FocusId is null ? -1 : Array.FindIndex(rows, r => r.Id == query.FocusId);
-            var page = focusedIndex < 0 ? query.Page : focusedIndex / query.PageSize + 1;
-            var offset = (long)(page - 1) * query.PageSize;
-            ReservationDto[] items = offset >= filtered.Length
-                ? []
-                : rows.Skip((int)offset).Take(query.PageSize).Select(reservation => reservation.ToDto(now)).ToArray();
-            return new ReservationFeedDto(items, filtered.Length, page, query.PageSize);
-        }
-        finally { await lease.DisposeAsync(); }
+        using var lease = await gate.EnterAsync(cancellationToken);
+        var now = clock.GetUtcNow();
+        var snapshot = await db.Reservations.AsNoTracking().Include(reservation => reservation.Room)
+            .Include(reservation => reservation.Organizer).ToListAsync(cancellationToken);
+        var filtered = snapshot.Where(reservation =>
+            (view == "upcoming"
+                ? reservation.StatusAt(now) == ReservationStatus.Booked
+                : reservation.StatusAt(now) != ReservationStatus.Booked) &&
+            (query.RoomId is null || reservation.RoomId == query.RoomId) &&
+            (organizerId is null || reservation.OrganizerId == organizerId) &&
+            (desiredStatus is null || reservation.StatusAt(now) == desiredStatus) &&
+            (query.From is null || reservation.EndUtc > query.From) &&
+            (query.To is null || reservation.StartUtc < query.To)).ToArray();
+        var ordered = view == "upcoming"
+            ? filtered.OrderBy(reservation => reservation.StartUtc).ThenBy(reservation => reservation.Id)
+            : filtered.OrderByDescending(reservation => reservation.StartUtc).ThenBy(reservation => reservation.Id);
+        var rows = ordered.ToArray();
+        var focusedIndex = query.FocusId is null ? -1 : Array.FindIndex(rows, r => r.Id == query.FocusId);
+        var page = focusedIndex < 0 ? query.Page : focusedIndex / query.PageSize + 1;
+        var offset = (long)(page - 1) * query.PageSize;
+        ReservationDto[] items = offset >= filtered.Length
+            ? []
+            : rows.Skip((int)offset).Take(query.PageSize).Select(reservation => reservation.ToDto(now)).ToArray();
+        return new ReservationFeedDto(items, filtered.Length, page, query.PageSize);
     }
 }

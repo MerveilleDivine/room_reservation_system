@@ -40,8 +40,11 @@ export function ReservationList({
               {formatTime(reservation.actualEndUtc ?? reservation.endUtc)}
             </span>
             {formatDate(reservation.startUtc) !==
-            formatDate(reservation.endUtc) ? (
-              <small>Ends {formatDate(reservation.endUtc)}</small>
+            formatDate(reservation.actualEndUtc ?? reservation.endUtc) ? (
+              <small>
+                Ends{' '}
+                {formatDate(reservation.actualEndUtc ?? reservation.endUtc)}
+              </small>
             ) : null}
           </div>
           <div className="reservation-details">
@@ -54,7 +57,8 @@ export function ReservationList({
             <p>
               {reservation.roomName} <span className="dot">·</span>{' '}
               {reservation.organizerName} <span className="dot">·</span>{' '}
-              {reservation.attendees} people
+              {reservation.attendees}{' '}
+              {reservation.attendees === 1 ? 'person' : 'people'}
             </p>
             {reservation.checkedInAtUtc ? (
               <small>
@@ -63,6 +67,9 @@ export function ReservationList({
             ) : null}
             {reservation.continuationOfId ? (
               <small>Additional time</small>
+            ) : null}
+            {reservation.completionNote ? (
+              <small>{reservation.completionNote}</small>
             ) : null}
           </div>
           <div className="reservation-actions">

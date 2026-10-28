@@ -11,31 +11,27 @@ public sealed class RoomAvailabilityService(
     public async Task<RoomAvailabilityDto[]> ReadAsync(
         DateTimeOffset startUtc, DateTimeOffset endUtc, Guid? organizerId, CancellationToken cancellationToken)
     {
-        var lease = await gate.AcquireAsync(db, cancellationToken);
-        try
-        {
-            var now = clock.GetUtcNow();
-            rules.ValidateTimeRange(startUtc, endUtc, now);
-            if (organizerId is not null && !await db.People.AsNoTracking()
-                    .AnyAsync(person => person.Id == organizerId, cancellationToken))
-                throw new BookingException("ORGANIZER_NOT_FOUND", "Choose an existing organizer.", 404);
+        using var lease = await gate.EnterAsync(cancellationToken);
+        var now = clock.GetUtcNow();
+        rules.ValidateTimeRange(startUtc, endUtc, now);
+        if (organizerId is not null && !await db.People.AsNoTracking()
+                .AnyAsync(person => person.Id == organizerId, cancellationToken))
+            throw new BookingException("ORGANIZER_NOT_FOUND", "Choose an existing organizer.", 404);
 
-            var rooms = await db.Rooms.AsNoTracking().OrderBy(room => room.Name).ToListAsync(cancellationToken);
-            var reservations = await db.Reservations.AsNoTracking().ToListAsync(cancellationToken);
-            return rooms.Select(room =>
+        var rooms = await db.Rooms.AsNoTracking().OrderBy(room => room.Name).ToListAsync(cancellationToken);
+        var reservations = await db.Reservations.AsNoTracking().ToListAsync(cancellationToken);
+        return rooms.Select(room =>
+        {
+            var request = new BookingRequest(room.Id, organizerId ?? Guid.Empty, "Room search", startUtc, endUtc, 1);
+            try
             {
-                var request = new BookingRequest(room.Id, organizerId ?? Guid.Empty, "Room search", startUtc, endUtc, 1);
-                try
-                {
-                    rules.Validate(request, room, reservations, now);
-                    return new RoomAvailabilityDto(room.Id, true, null);
-                }
-                catch (BookingException exception)
-                {
-                    return new RoomAvailabilityDto(room.Id, false, exception.Message);
-                }
-            }).ToArray();
-        }
-        finally { await lease.DisposeAsync(); }
+                rules.Validate(request, room, reservations, now);
+                return new RoomAvailabilityDto(room.Id, true, null);
+            }
+            catch (BookingException exception)
+            {
+                return new RoomAvailabilityDto(room.Id, false, exception.Message);
+            }
+        }).ToArray();
     }
 }

@@ -1,24 +1,16 @@
 # Verification record
 
-## Reliability work, 28 October 2026
+## Current reliability fix
 
-[Checks run 40664368137](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/40664368137) passed for application and test source `f2e62d90f91bff5c97ae238ced7fad7e47ff54a2`. The implementation is in [PR 1](https://github.com/MerveilleDivine/room_reservation_system/pull/1).
+The app retains ASP.NET Core, EF Core InMemory and React. The external database proposal has been removed. Hosting now requires one API process, as configured in `render.yaml`, rather than independently scaled in-memory replicas.
 
-| Check | Result |
-| --- | --- |
-| Backend Release tests | 123 passed; 3 PostgreSQL-only tests skipped in this job |
-| Independent-host PostgreSQL tests | All 3 passed against PostgreSQL 17 |
-| Frontend | Strict TypeScript, production build, 44 tests and formatting passed |
-| Development browser | All 11 Chromium scenarios passed |
-| Published container browser | All 11 Chromium scenarios passed |
+Local validation on 28 October 2026 passes 123 backend tests with no skips and 45 frontend tests. The final browser run and deployment results are recorded after they complete. An earlier passing run does not establish that this revision is deployed.
 
-The new checks cover member-only detail reads, exact zero/two/seventeen-minute extension gaps, partial-minute rejection, and saved bookings resolving to their actual chronological page. Separate API hosts with separate DI containers verify shared seed editing, restart persistence, durable receipt recovery and rejection of competing overlaps through PostgreSQL.
+The regression coverage includes saved bookings in their chronological Upcoming page, private member reads, zero/two/seventeen-minute extension limits, partial-minute rejection, conflict recovery and lost HTTP confirmations. Browser scenarios also check editing, reload and cancellation of preloaded reservations at a 390 px mobile width, plus clearing a confirmation when filters hide its booking.
 
-The first browser run found hidden fractions of a millisecond in sample timestamps crossing the JavaScript Date boundary. Seeds now align to whole minutes. A genuinely shorter gap is still rounded down rather than allowed to overlap another booking.
+A server restart resets synthetic data and receipts. Browser refreshes must preserve them while the single server runs. Profile selection demonstrates visibility without authentication, as the brief allows. See [hosting.md](hosting.md) for the release setup and checks.
 
-The earlier one-process checks did not establish consistency across hosted instances. User reports exposed missing seeded IDs and saved bookings absent on later requests. The public site still runs the older revision until a shared database is provisioned. Supabase refused a new free project because the account has reached its active-project limit. No existing app database has been modified.
-
-The hosted fix is not yet verified or submission-ready. The successful container browser job uses an explicit disposable InMemory override; it does not prove hosted database connectivity. Selectable demo profiles model read scope but do not authenticate users or protect real private data. See [hosted-storage.md](hosted-storage.md) for the remaining setup and verification.
+The old public Vercel site still runs the previous release. The fixed public URL will be recorded only after the single-instance host is deployed and verified.
 
 ## Earlier verification
 

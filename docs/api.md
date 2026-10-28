@@ -60,7 +60,7 @@ The same key and fingerprint returns the same reservation without reapplying the
 
 `GET /booking-requests/{requestId}` waits for the process's write gate and returns 200 with the current reservation if its receipt exists, or 404 otherwise. The browser attempts this lookup after a network failure, 5xx or unreadable success response. If recovery remains uncertain, it preserves the payload and key, locks the inputs and offers a retry of that same request. A definite 4xx validation rejection permits correction. Closing/reloading a form does not persist its submission identity.
 
-Receipts share the storage provider with reservations. InMemory receipts disappear on restart and are process-local. PostgreSQL receipts commit atomically with bookings under a cross-server transaction lock and survive restarts. A missing receipt is not proof of a failed write. Lifecycle actions do not use this booking-write recovery protocol.
+Receipts share the InMemory store and booking gate with reservations. They are process-local and disappear on restart. A missing receipt is not proof of a failed write. Lifecycle actions do not use this booking-write recovery protocol; their failures refresh the displayed schedule without reporting success.
 
 Example conflict (HTTP 409):
 
