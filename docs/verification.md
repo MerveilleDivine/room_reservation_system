@@ -4,7 +4,16 @@
 
 The app retains ASP.NET Core, EF Core InMemory and React. The external database proposal has been removed. Hosting now requires one API process, as configured in `render.yaml`, rather than independently scaled in-memory replicas.
 
-Local validation on 28 October 2026 passes 123 backend tests with no skips and 45 frontend tests. The final browser run and deployment results are recorded after they complete. An earlier passing run does not establish that this revision is deployed.
+[Checks run 40671363249](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/40671363249) passed for application and test source `d4cbb7c412f50284c542cd23b09d6003fbf62b88` on 28 October 2026:
+
+| Check | Result |
+| --- | --- |
+| Backend Release tests | 123 passed, no skips |
+| Frontend | TypeScript, production build, 45 tests and formatting passed |
+| Development browser | All 12 Chromium scenarios passed |
+| Published container browser | All 12 Chromium scenarios passed |
+
+This establishes the source's tested behavior within one API process. It does not establish that the public release is deployed. Render is connected, but its first deployment requires explicit workspace selection. The sole listed workspace is `My Workspace`; no service has been created yet.
 
 The regression coverage includes saved bookings in their chronological Upcoming page, private member reads, zero/two/seventeen-minute extension limits, partial-minute rejection, conflict recovery and lost HTTP confirmations. Browser scenarios also check editing, reload and cancellation of preloaded reservations at a 390 px mobile width, plus clearing a confirmation when filters hide its booking.
 
