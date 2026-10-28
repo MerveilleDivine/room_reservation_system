@@ -1,14 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["fra1"],
-  "services": {
-    "app": {
-      "root": ".",
-      "runtime": "container",
-      "entrypoint": "Dockerfile.vercel"
+  "framework": null,
+  "buildCommand": "",
+  "installCommand": "",
+  "outputDirectory": "legacy-redirect",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "destination": "https://roomwise-reservations.onrender.com/:path*",
+      "permanent": false
     }
-  },
-  "rewrites": [
-    { "source": "/(.*)", "destination": { "service": "app" } }
   ]
 }

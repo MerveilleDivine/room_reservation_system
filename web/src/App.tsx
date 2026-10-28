@@ -6,6 +6,7 @@ import {
 } from './api/client';
 import type {
   BookingRequest,
+  Equipment,
   Person,
   Reservation,
   ReservationAction,
@@ -55,6 +56,7 @@ type BookingForm = {
   roomId?: string;
   startUtc?: string;
   endUtc?: string;
+  requiredEquipment?: Equipment[];
 };
 
 export function App() {
@@ -74,7 +76,7 @@ export function App() {
   const current = pages[page];
   const person = people.data?.find((item) => item.id === profile);
   const displayName = profile === 'admin' ? 'Administrator' : person?.firstName;
-  const [today] = useState(() => new Date());
+  const today = new Date();
   const dateLabel = new Intl.DateTimeFormat(undefined, {
     weekday: 'long',
     month: 'long',
@@ -95,6 +97,7 @@ export function App() {
     setPending(true);
     try {
       const reservation = await saveReservation(request, id, submissionKey);
+      setActionError(null);
       setSaved({ reservation, label: id ? 'Changes saved' : 'You’re booked' });
       setScheduleVersion((value) => value + 1);
       setForm(null);
@@ -118,6 +121,7 @@ export function App() {
         additionalMinutes,
         submissionKey,
       );
+      setActionError(null);
       setSaved({ reservation, label: 'Extra time reserved' });
       setScheduleVersion((value) => value + 1);
       setPage('reservations');
@@ -169,6 +173,7 @@ export function App() {
       setActionError(
         error instanceof Error ? error : new Error('Action failed.'),
       );
+      refresh();
     } finally {
       setPending(false);
     }
@@ -197,22 +202,27 @@ export function App() {
             <span>Roomwise</span>
           </a>
           <nav aria-label="Main navigation">
-            {(Object.keys(pages) as Page[]).map((item) => (
-              <button
-                key={item}
-                className={page === item ? 'nav-item selected' : 'nav-item'}
-                aria-current={page === item ? 'page' : undefined}
-                onClick={() => {
-                  setPage(item);
-                  setSaved(null);
-                  window.scrollTo({ top: 0 });
-                  setNotice('');
-                  setActionError(null);
-                }}
-              >
-                <span>{pages[item].label}</span>
-              </button>
-            ))}
+            {(Object.keys(pages) as Page[])
+              .filter(
+                (item) =>
+                  profile === 'admin' || (item !== 'users' && item !== 'usage'),
+              )
+              .map((item) => (
+                <button
+                  key={item}
+                  className={page === item ? 'nav-item selected' : 'nav-item'}
+                  aria-current={page === item ? 'page' : undefined}
+                  onClick={() => {
+                    setPage(item);
+                    setSaved(null);
+                    window.scrollTo({ top: 0 });
+                    setNotice('');
+                    setActionError(null);
+                  }}
+                >
+                  <span>{pages[item].label}</span>
+                </button>
+              ))}
           </nav>
           <div className="header-actions">
             <label className="profile-switcher">
@@ -249,6 +259,7 @@ export function App() {
               title="Refresh"
               onClick={() => {
                 setSaved(null);
+                setActionError(null);
                 refresh();
               }}
             >
@@ -312,8 +323,14 @@ export function App() {
               revision={revision}
               canBook={canBook}
               profile={profile}
-              onBook={(roomId, startUtc, endUtc) =>
-                setForm({ reservation: null, roomId, startUtc, endUtc })
+              onBook={(roomId, startUtc, endUtc, requiredEquipment) =>
+                setForm({
+                  reservation: null,
+                  roomId,
+                  startUtc,
+                  endUtc,
+                  requiredEquipment,
+                })
               }
             />
           ) : null}
@@ -325,6 +342,7 @@ export function App() {
               onBook={() => setForm({ reservation: null })}
               onRefresh={() => {
                 setSaved(null);
+                setActionError(null);
                 refresh();
               }}
               profile={profile}
@@ -357,6 +375,7 @@ export function App() {
           preferredRoomId={form.roomId}
           preferredStartUtc={form.startUtc}
           preferredEndUtc={form.endUtc}
+          requiredEquipment={form.requiredEquipment}
           onSave={save}
           onClose={() => setForm(null)}
         />

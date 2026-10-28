@@ -34,7 +34,7 @@ function mockWorkspace() {
 }
 
 describe('profile ownership', () => {
-  it('keeps another members booking visible and read-only, while admin can manage it', async () => {
+  it('hides other members bookings and administrative views, while admin can manage them', async () => {
     mockWorkspace();
     render(<App />);
     const user = userEvent.setup();
@@ -43,8 +43,18 @@ describe('profile ownership', () => {
         screen.getByRole('button', { name: 'New reservation' }),
       ).toBeEnabled(),
     );
-    await user.click(screen.getByRole('button', { name: 'Everyone' }));
-    await screen.findByRole('heading', { name: 'Planning' });
+    await screen.findByRole('heading', {
+      name: 'A little room in your schedule.',
+    });
+    expect(
+      screen.queryByRole('heading', { name: 'Planning' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Everyone' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'People' }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Edit' }),
     ).not.toBeInTheDocument();

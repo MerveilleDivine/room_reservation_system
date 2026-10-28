@@ -1,6 +1,46 @@
 # Verification record
 
-Latest full verification: 26 October 2026.
+## Smaller-room suggestions
+
+[Checks run 40676774036](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/40676774036) passed for application and test source `2743feb48c37af4d75e858087ca893b8c480ecd3` on 28 October 2026:
+
+| Check | Result |
+| --- | --- |
+| Backend Release tests | 136 passed, no skips |
+| Frontend | TypeScript, production build, 50 tests and formatting passed |
+| Development browser | All 14 Chromium scenarios passed |
+| Published container browser | All 14 Chromium scenarios passed |
+
+Coverage includes six people in a twelve-seat room, similarity and explicit equipment requirements, partial room overlaps, organizer conflicts, inactive/undersized alternatives, editing exclusions and member access. A competing booking after the suggestion is rejected at save. UI checks confirm that accepting changes only the room, ignoring keeps the selected room, obsolete suggestions disappear and failed optional lookups do not block booking. Real browser checks save the suggested room, verify times and attendee count after reload, and exercise the mobile suggestion layout.
+
+Render deployment `dep-dbgtdcafngtc73b6ol6g` reached `live` on 28 October 2026 for this source. Live checks confirmed health, the six-seat Birch suggestion for six people in Atlas, equipment differences, no undersized suggestion for seven people, and retention of an explicit video-conferencing requirement. The live browser accepted Birch, saved the meeting and showed the same room, six attendees and selected interval after reload. The isolated synthetic booking was cancelled afterward.
+
+## Reliability release
+
+The app retains ASP.NET Core, EF Core InMemory and React. The external database proposal has been removed. Hosting now requires one API process, as configured in `render.yaml`, rather than independently scaled in-memory replicas.
+
+[Checks run 40671363249](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/40671363249) passed for application and test source `d4cbb7c412f50284c542cd23b09d6003fbf62b88` on 28 October 2026:
+
+| Check | Result |
+| --- | --- |
+| Backend Release tests | 123 passed, no skips |
+| Frontend | TypeScript, production build, 45 tests and formatting passed |
+| Development browser | All 12 Chromium scenarios passed |
+| Published container browser | All 12 Chromium scenarios passed |
+
+The [public release](https://roomwise-reservations.onrender.com/) is deployed and verified. Render deploy `dep-dbgstadg1s2s73c8cq0g` reached `live` on 28 October 2026 for source `7b2066d4cac6ffa3d17ec86c9ec42fa7082891f5` (the tested application plus verification documentation). It runs one free Docker instance in Frankfurt in the approved `My Workspace`.
+
+Hosted checks confirmed health, scoped member reads, denial of another member's details and usage view, create/read/reload/edit/cancel, History, confirmation replay, room/organizer overlap rejection and one winner for simultaneous overlapping requests. The live extension check advertised exactly two minutes, rejected three, accepted two and preserved the exact interval. Synthetic test bookings were cancelled afterward. The original preloaded reservation saved successfully through the browser. No application error logs were returned after verification.
+
+The regression coverage includes saved bookings in their chronological Upcoming page, private member reads, zero/two/seventeen-minute extension limits, partial-minute rejection, conflict recovery and lost HTTP confirmations. Browser scenarios also check editing, reload and cancellation of preloaded reservations at a 390 px mobile width, plus clearing a confirmation when filters hide its booking.
+
+A server restart resets synthetic data and receipts. Browser refreshes must preserve them while the single server runs. Profile selection demonstrates visibility without authentication, as the brief allows. See [hosting.md](hosting.md) for the release setup and checks.
+
+The old Vercel address is retained as a static forwarding page to the Render app. It no longer hosts an independent in-memory booking backend. The final repository changes update release documentation and this legacy redirect; they do not change the tested application.
+
+## Earlier verification
+
+Recorded verification: 26 October 2026.
 
 ## Personal schedule and room finder
 

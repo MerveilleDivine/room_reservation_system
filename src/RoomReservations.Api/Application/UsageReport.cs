@@ -84,19 +84,15 @@ public sealed class UsageReportService(ReservationsDbContext db, TimeProvider cl
             throw new BookingException("INVALID_REPORT_RANGE", "Provide both the report start and end, or leave both empty.");
 
         // Materialize a consistent snapshot while booking mutations are excluded.
-        await gate.Semaphore.WaitAsync(cancellationToken);
-        try
+        using var lease = await gate.EnterAsync(cancellationToken);
+        var now = clock.GetUtcNow();
+        var rooms = await db.Rooms.AsNoTracking().ToListAsync(cancellationToken);
+        if (roomId is not null)
         {
-            var now = clock.GetUtcNow();
-            var rooms = await db.Rooms.AsNoTracking().ToListAsync(cancellationToken);
-            if (roomId is not null)
-            {
-                rooms = rooms.Where(r => r.Id == roomId).ToList();
-                if (rooms.Count == 0) throw new BookingException("ROOM_NOT_FOUND", "This room could not be found.", 404);
-            }
-            var reservations = await db.Reservations.AsNoTracking().ToListAsync(cancellationToken);
-            return UsageReportBuilder.Build(rooms, reservations, from ?? now.AddDays(-7), to ?? now, now);
+            rooms = rooms.Where(r => r.Id == roomId).ToList();
+            if (rooms.Count == 0) throw new BookingException("ROOM_NOT_FOUND", "This room could not be found.", 404);
         }
-        finally { gate.Semaphore.Release(); }
+        var reservations = await db.Reservations.AsNoTracking().ToListAsync(cancellationToken);
+        return UsageReportBuilder.Build(rooms, reservations, from ?? now.AddDays(-7), to ?? now, now);
     }
 }

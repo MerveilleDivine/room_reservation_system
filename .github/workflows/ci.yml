@@ -94,7 +94,7 @@ jobs:
           node-version: "24"
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - run: docker build --file Dockerfile.vercel --tag roomwise:ci .
+      - run: docker build --tag roomwise:ci .
       - run: npm ci
         working-directory: web
       - name: Start the published app

@@ -30,6 +30,12 @@ Selectable member and administrator profiles add ownership to booking workflows 
 
 The full CI run for `359f641` passed backend tests, 32 frontend tests, and all nine browser scenarios against development servers and the published container. See [verification.md](verification.md).
 
+## Reliability update, 28 October 2026
+
+The hosted InMemory store allowed different requests to reach different reservations. The chosen correction keeps the assignment stack and runs one server instance instead of adding a database service. Seed IDs are stable and sample timestamps align to the minute-based form. Saved reservations stay in Upcoming at their chronological page. Member detail reads are scoped on the API. Extra time displays and enforces the exact gap, including two minutes or none. Stale action errors refresh the schedule; changing filters clears an obsolete confirmation. Browser tests include editing and cancelling preloaded reservations on mobile.
+
+Deployment uses the root Dockerfile and a free single-instance `render.yaml` Blueprint. The new release remains unpublished until Render is connected and hosted checks pass. The superseded PostgreSQL proposal has been removed.
+
 ## Follow-up work
 
 1. Verify setup from a fresh Windows checkout with the README commands.
@@ -39,4 +45,4 @@ The full CI run for `359f641` passed backend tests, 32 frontend tests, and all n
 
 ## Deliberate scope
 
-Room/user administration, authentication, billing, external calendars, notifications and production operations are outside the assignment's current scope. A disposable hosted preview is provided for review. InMemory remains the required storage provider. The report uses manual check-in, not inferred physical occupancy, and does not invent office-hours utilization.
+Room/user administration, authentication, billing, external calendars, notifications and production operations are outside the assignment's current scope. A public demo uses synthetic data. InMemory remains the provider both locally and on the single-instance host. The report uses manual check-in, not inferred physical occupancy, and does not invent office-hours utilization.

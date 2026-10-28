@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import type {
   BookingRequest,
+  Equipment,
   Person,
   Reservation,
   Room,
@@ -9,6 +10,7 @@ import type {
 import { toLocalInput, toUtc } from '../lib/dates';
 import { useSubmissionKey } from '../hooks/useSubmissionKey';
 import { Icon } from './Icon';
+import { RoomSuggestion } from './RoomSuggestion';
 
 interface Props {
   organizerId?: string;
@@ -18,6 +20,7 @@ interface Props {
   preferredRoomId?: string;
   preferredStartUtc?: string;
   preferredEndUtc?: string;
+  requiredEquipment?: Equipment[];
   onSave: (
     request: BookingRequest,
     id: string | undefined,
@@ -34,23 +37,72 @@ export function BookingDialog({
   preferredRoomId,
   preferredStartUtc,
   preferredEndUtc,
+  requiredEquipment = [],
   onSave,
   onClose,
 }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleInput = useRef<HTMLInputElement>(null);
-  const endInput = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<Error | null>(null);
   const [saving, setSaving] = useState(false);
   const pendingRequest = useRef<BookingRequest | null>(null);
   const submissionKey = useSubmissionKey();
   const unconfirmed = error instanceof ApiError && error.outcomeUnknown;
-  const [defaultStart] = useState(() => {
-    if (preferredStartUtc) return new Date(preferredStartUtc);
-    const start = new Date(Date.now() + 30 * 60 * 1000);
-    start.setMinutes(Math.floor(start.getMinutes() / 15) * 15, 0, 0);
-    return start;
+  const [selection, setSelection] = useState(() => {
+    const start = preferredStartUtc
+      ? new Date(preferredStartUtc)
+      : new Date(Date.now() + 30 * 60 * 1000);
+    if (!preferredStartUtc)
+      start.setMinutes(Math.floor(start.getMinutes() / 15) * 15, 0, 0);
+    return {
+      roomId:
+        initial?.roomId ??
+        preferredRoomId ??
+        rooms.find((room) => room.isActive)?.id ??
+        '',
+      organizerId: organizerId ?? initial?.organizerId ?? '',
+      start: toLocalInput(initial ? new Date(initial.startUtc) : start),
+      end: toLocalInput(
+        initial
+          ? new Date(initial.endUtc)
+          : preferredEndUtc
+            ? new Date(preferredEndUtc)
+            : new Date(start.getTime() + 30 * 60 * 1000),
+      ),
+      attendees: String(initial?.attendees ?? 1),
+    };
   });
+  const attendees = Number(selection.attendees);
+  const startTime = new Date(selection.start).getTime();
+  const endTime = new Date(selection.end).getTime();
+  const selectedRoom = rooms.find((room) => room.id === selection.roomId);
+  const canSuggest =
+    !saving &&
+    !unconfirmed &&
+    selection.organizerId &&
+    Number.isInteger(attendees) &&
+    attendees > 0 &&
+    startTime > Date.now() &&
+    endTime > startTime &&
+    rooms.some(
+      (room) =>
+        room.isActive &&
+        room.capacity >= attendees &&
+        room.capacity < (selectedRoom?.capacity ?? 0),
+    );
+  const suggestionQuery = canSuggest
+    ? new URLSearchParams({
+        roomId: selection.roomId,
+        organizerId: selection.organizerId,
+        attendees: String(attendees),
+        startUtc: toUtc(selection.start),
+        endUtc: toUtc(selection.end),
+      })
+    : null;
+  if (suggestionQuery && requiredEquipment.length)
+    suggestionQuery.set('equipment', requiredEquipment.join(','));
+  if (suggestionQuery && initial)
+    suggestionQuery.set('excludeReservationId', initial.id);
 
   useEffect(() => {
     const element = dialog.current;
@@ -148,11 +200,12 @@ export function BookingDialog({
               <select
                 name="roomId"
                 required
-                defaultValue={
-                  initial?.roomId ??
-                  preferredRoomId ??
-                  rooms.find((room) => room.isActive)?.id ??
-                  ''
+                value={selection.roomId}
+                onChange={(event) =>
+                  setSelection((current) => ({
+                    ...current,
+                    roomId: event.target.value,
+                  }))
                 }
               >
                 <option value="" disabled>
@@ -189,7 +242,13 @@ export function BookingDialog({
                 <select
                   name="organizerId"
                   required
-                  defaultValue={initial?.organizerId ?? ''}
+                  value={selection.organizerId}
+                  onChange={(event) =>
+                    setSelection((current) => ({
+                      ...current,
+                      organizerId: event.target.value,
+                    }))
+                  }
                 >
                   <option value="" disabled>
                     Choose an organizer
@@ -208,39 +267,39 @@ export function BookingDialog({
                 name="start"
                 type="datetime-local"
                 onChange={(event) => {
-                  const start = new Date(event.target.value);
-                  const end = endInput.current;
-                  if (
-                    end &&
-                    !Number.isNaN(start.getTime()) &&
-                    (!end.value || new Date(end.value) <= start)
-                  )
-                    end.value = toLocalInput(
-                      new Date(start.getTime() + 60 * 60 * 1000),
-                    );
+                  const value = event.target.value;
+                  const start = new Date(value);
+                  setSelection((current) => ({
+                    ...current,
+                    start: value,
+                    end:
+                      !Number.isNaN(start.getTime()) &&
+                      (!current.end || new Date(current.end) <= start)
+                        ? toLocalInput(
+                            new Date(start.getTime() + 60 * 60 * 1000),
+                          )
+                        : current.end,
+                  }));
                 }}
                 step="60"
                 required
-                defaultValue={toLocalInput(
-                  initial ? new Date(initial.startUtc) : defaultStart,
-                )}
+                value={selection.start}
               />
             </label>
             <label>
               Ends
               <input
-                ref={endInput}
                 name="end"
                 type="datetime-local"
                 step="60"
                 required
-                defaultValue={toLocalInput(
-                  initial
-                    ? new Date(initial.endUtc)
-                    : preferredEndUtc
-                      ? new Date(preferredEndUtc)
-                      : new Date(defaultStart.getTime() + 30 * 60 * 1000),
-                )}
+                value={selection.end}
+                onChange={(event) =>
+                  setSelection((current) => ({
+                    ...current,
+                    end: event.target.value,
+                  }))
+                }
               />
             </label>
           </div>
@@ -253,9 +312,23 @@ export function BookingDialog({
               min="1"
               step="1"
               required
-              defaultValue={initial?.attendees ?? 1}
+              value={selection.attendees}
+              onChange={(event) =>
+                setSelection((current) => ({
+                  ...current,
+                  attendees: event.target.value,
+                }))
+              }
             />
           </label>
+          <RoomSuggestion
+            path={
+              suggestionQuery ? '/room-suggestions?' + suggestionQuery : null
+            }
+            onChoose={(roomId) =>
+              setSelection((current) => ({ ...current, roomId }))
+            }
+          />
         </fieldset>
         {error ? (
           <div className="notice error" role="alert">

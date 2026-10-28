@@ -15,17 +15,27 @@ public static class Endpoints
             new BookingPolicyDto(options.Value.MaximumDurationDays, options.Value.MaximumAdvanceDays));
         app.MapGet("/api/usage", async (
             DateTimeOffset? from, DateTimeOffset? to, Guid? roomId,
-            UsageReportService service, CancellationToken cancellationToken) =>
-            await service.ReadAsync(from, to, roomId, cancellationToken));
+            UsageReportService service, BookingProfile profile, CancellationToken cancellationToken) =>
+        {
+            profile.RequireAdministrator();
+            return await service.ReadAsync(from, to, roomId, cancellationToken);
+        });
         app.MapGet("/api/reservation-feed", async (
             string? view, Guid? roomId, Guid? organizerId, string? status, DateTimeOffset? from, DateTimeOffset? to,
-            int? page, int? pageSize, ReservationFeedService service, CancellationToken cancellationToken) =>
+            int? page, int? pageSize, Guid? focusId, ReservationFeedService service, CancellationToken cancellationToken) =>
             await service.ReadAsync(new ReservationFeedQuery(view, roomId, organizerId, status, from, to,
-                page ?? 1, pageSize ?? 6), cancellationToken));
+                page ?? 1, pageSize ?? 6, focusId), cancellationToken));
         app.MapGet("/api/room-availability", async (
             DateTimeOffset startUtc, DateTimeOffset endUtc, Guid? organizerId,
+            RoomAvailabilityService service, BookingProfile profile, ReservationsDbContext db, CancellationToken cancellationToken) =>
+            await service.ReadAsync(startUtc, endUtc, organizerId is null ? null :
+                await profile.ScopeOrganizerAsync(db, organizerId, cancellationToken), cancellationToken));
+        app.MapGet("/api/room-suggestions", async (
+            Guid roomId, Guid organizerId, int attendees, DateTimeOffset startUtc, DateTimeOffset endUtc,
+            string? equipment, Guid? excludeReservationId,
             RoomAvailabilityService service, CancellationToken cancellationToken) =>
-            await service.ReadAsync(startUtc, endUtc, organizerId, cancellationToken));
+            await service.SuggestAsync(roomId, organizerId, attendees, startUtc, endUtc,
+                ParseEquipment(equipment), excludeReservationId, cancellationToken));
 
         app.MapGet("/api/rooms", async (
             int? minimumCapacity, string? floor, string? equipment,
@@ -33,13 +43,7 @@ public static class Endpoints
         {
             if (minimumCapacity is < 1)
                 throw new BookingException("INVALID_CAPACITY_FILTER", "Minimum capacity must be positive.");
-            var requiredEquipment = Equipment.None;
-            foreach (var code in (equipment ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-            {
-                if (!DtoMapping.EquipmentCodes.TryGetValue(code, out var value))
-                    throw new BookingException("INVALID_EQUIPMENT", $"Unknown equipment: {code}.");
-                requiredEquipment |= value;
-            }
+            var requiredEquipment = ParseEquipment(equipment);
             var rooms = await db.Rooms.AsNoTracking().OrderBy(r => r.Name).ToListAsync(cancellationToken);
             return rooms.Where(r =>
                 (minimumCapacity is null || r.Capacity >= minimumCapacity) &&
@@ -48,19 +52,21 @@ public static class Endpoints
         });
 
         app.MapGet("/api/users", async (
-            ReservationsDbContext db, TimeProvider clock, CancellationToken cancellationToken) =>
+            ReservationsDbContext db, TimeProvider clock, HttpRequest request, CancellationToken cancellationToken) =>
         {
             var now = clock.GetUtcNow();
             var people = await db.People.AsNoTracking().OrderBy(p => p.FirstName).ToListAsync(cancellationToken);
             var reservations = await db.Reservations.AsNoTracking().ToListAsync(cancellationToken);
             return people.Select(person => new PersonDto(person.Id, person.FirstName, person.LastName,
-                reservations.Count(r => r.OrganizerId == person.Id && r.StatusAt(now) == ReservationStatus.Booked)));
+                request.Headers["X-Roomwise-Profile"] == "admin"
+                    ? reservations.Count(r => r.OrganizerId == person.Id && r.StatusAt(now) == ReservationStatus.Booked) : 0));
         });
 
         app.MapGet("/api/reservations", async (
             Guid? roomId, Guid? organizerId, string? status, DateTimeOffset? from, DateTimeOffset? to,
-            ReservationsDbContext db, TimeProvider clock, CancellationToken cancellationToken) =>
+            ReservationsDbContext db, TimeProvider clock, BookingProfile profile, CancellationToken cancellationToken) =>
         {
+            organizerId = await profile.ScopeOrganizerAsync(db, organizerId, cancellationToken);
             if (from is not null && to is not null && from >= to)
                 throw new BookingException("INVALID_DATE_FILTER", "The date range end must be after its start.");
             ReservationStatus? desiredStatus = null;
@@ -91,11 +97,12 @@ public static class Endpoints
             Guid requestId, ReservationService service, CancellationToken cancellationToken) =>
             Results.Ok(await service.RecoverAsync(requestId, cancellationToken)));
         app.MapGet("/api/reservations/{id:guid}", async (
-            Guid id, ReservationsDbContext db, TimeProvider clock, CancellationToken cancellationToken) =>
+            Guid id, ReservationsDbContext db, TimeProvider clock, BookingProfile profile, CancellationToken cancellationToken) =>
         {
             var reservation = await db.Reservations.AsNoTracking().Include(r => r.Room).Include(r => r.Organizer)
                 .SingleOrDefaultAsync(r => r.Id == id, cancellationToken)
                 ?? throw new BookingException("RESERVATION_NOT_FOUND", "This reservation could not be found.", 404);
+            await profile.RequireAccessAsync(db, reservation.OrganizerId, cancellationToken);
             return Results.Ok(reservation.ToDto(clock.GetUtcNow()));
         });
         app.MapPut("/api/reservations/{id:guid}", async (
@@ -107,6 +114,9 @@ public static class Endpoints
             var result = await service.ReserveMoreAsync(id, request, cancellationToken, SubmissionKey(http));
             return Results.Created($"/api/reservations/{result.Id}", result);
         });
+        app.MapGet("/api/reservations/{id:guid}/extra-time", async (
+            Guid id, ExtraTimeService service, CancellationToken cancellationToken) =>
+            await service.ReadAsync(id, cancellationToken));
         app.MapPost("/api/reservations/{id:guid}/cancel", async (
             Guid id, ReservationService service, CancellationToken cancellationToken) =>
             Results.Ok(await service.TransitionAsync(id, "cancel", cancellationToken)));
@@ -116,6 +126,18 @@ public static class Endpoints
         app.MapPost("/api/reservations/{id:guid}/end", async (
             Guid id, ReservationService service, CancellationToken cancellationToken) =>
             Results.Ok(await service.TransitionAsync(id, "end", cancellationToken)));
+    }
+
+    private static Equipment ParseEquipment(string? equipment)
+    {
+        var required = Equipment.None;
+        foreach (var code in (equipment ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!DtoMapping.EquipmentCodes.TryGetValue(code, out var value))
+                throw new BookingException("INVALID_EQUIPMENT", $"Unknown equipment: {code}.");
+            required |= value;
+        }
+        return required;
     }
 
     private static Guid? SubmissionKey(HttpRequest request)

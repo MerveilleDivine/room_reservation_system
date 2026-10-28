@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using RoomReservations.Api.Application;
@@ -28,6 +29,7 @@ internal sealed class TestApplication(int maximumDurationDays = 7) : WebApplicat
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
             services.RemoveAll<DbContextOptions<ReservationsDbContext>>();
+            services.RemoveAll<IDbContextOptionsConfiguration<ReservationsDbContext>>();
             services.AddDbContext<ReservationsDbContext>(options => options.UseInMemoryDatabase(databaseName));
         });
     }

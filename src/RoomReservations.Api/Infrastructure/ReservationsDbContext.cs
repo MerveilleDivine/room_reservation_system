@@ -19,10 +19,3 @@ public sealed class ReservationsDbContext(DbContextOptions<ReservationsDbContext
         modelBuilder.Entity<Reservation>().Property(r => r.Title).HasMaxLength(120);
     }
 }
-
-/// <summary>Serializes validate + save in one API process. This is not a distributed lock.</summary>
-public sealed class BookingWriteGate : IDisposable
-{
-    public SemaphoreSlim Semaphore { get; } = new(1, 1);
-    public void Dispose() => Semaphore.Dispose();
-}

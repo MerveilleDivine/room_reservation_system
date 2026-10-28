@@ -21,7 +21,7 @@ Local base URL: `http://localhost:5080/api`. JSON property names are camelCase. 
 
 ### Selected profile
 
-All booking writes and confirmation recovery require one `X-Roomwise-Profile` header: an existing person GUID for member ownership, or `admin` for workspace management. Read-only room, user, reservation and usage endpoints remain open. Members may create only for themselves, edit only their own reservations without transferring ownership, and perform lifecycle actions only on their own bookings. Administrator can act for any organizer.
+Booking detail reads, writes and confirmation recovery require one `X-Roomwise-Profile` header: an existing person GUID, or `admin` for workspace management. Members receive only their own reservations from both list endpoints, cannot request another organizer's details, and cannot reassign ownership. Usage requires Administrator (`ADMIN_REQUIRED`, 403); non-admin user lookups do not expose booking counts. Public room availability contains no meeting titles or organizer identities. Organizer-specific availability requires the matching member or Administrator.
 
 Missing headers return `PROFILE_REQUIRED` (400), invalid profiles return `INVALID_PROFILE` (400), and ownership violations return `BOOKING_ACCESS_DENIED` (403). A request receipt is also restricted to the current reservation owner or Administrator.
 
@@ -46,6 +46,8 @@ Reservation responses also include room/organizer names, status, nullable `check
 
 ## Additional time
 
+`GET /reservations/{id}/extra-time` returns `{maximumMinutes,startsAtUtc,blockedFromUtc,blockedUntilUtc,reasonCode,message}` for the owner or Administrator. The maximum is the smaller of the configured duration limit and the whole-minute gap before the next conflicting room/organizer reservation. Cancelled bookings and released remainders do not block time. Zero disables submission; two minutes allows exactly two. A partial minute is rounded down to avoid overlap. Blocking timestamps do not include another meeting's details. Saving repeats this calculation under the write lock; an earlier availability response is not a hold.
+
 Send `{ "additionalMinutes": 30 }` to `/reservations/{id}/continuations` before the original booking ends. The API creates a separate reservation starting at the original end, with the same room, organizer, title and attendee count. All booking rules apply to that future interval. The parent remains unchanged; the response is 201 with the child's Location and `continuationOfId`.
 
 Only an ongoing, Booked parent is eligible. One non-cancelled continuation is allowed per parent. Edit or cancel that future booking instead of creating another continuation. A cancelled continuation can be replaced. Each reservation retains its own check-in and cancellation; ending the parent early does not cancel its child. To request time after a slot has already elapsed, make a new future booking. No retroactive reservation or automatic displacement is performed.
@@ -58,7 +60,7 @@ The same key and fingerprint returns the same reservation without reapplying the
 
 `GET /booking-requests/{requestId}` waits for the process's write gate and returns 200 with the current reservation if its receipt exists, or 404 otherwise. The browser attempts this lookup after a network failure, 5xx or unreadable success response. If recovery remains uncertain, it preserves the payload and key, locks the inputs and offers a retry of that same request. A definite 4xx validation rejection permits correction. Closing/reloading a form does not persist its submission identity.
 
-Receipts share the required InMemory database and process-local gate with reservations. They disappear on restart and do not provide distributed idempotency. A missing receipt is not proof of a failed write on a multi-instance deployment. Production use requires durable receipts and database-backed concurrency. Lifecycle actions (check-in, cancel, early end) do not use this booking-write recovery protocol.
+Receipts share the InMemory store and booking gate with reservations. They are process-local and disappear on restart. A missing receipt is not proof of a failed write. Lifecycle actions do not use this booking-write recovery protocol; their failures refresh the displayed schedule without reporting success.
 
 Example conflict (HTTP 409):
 
@@ -97,7 +99,7 @@ Example conflict (HTTP 409):
 | `CONTINUATION_ALREADY_BOOKED`                     | Parent already has a non-cancelled continuation                    |
 | `INVALID_REQUEST_ID`                              | Malformed, empty or multiple idempotency keys                      |
 | `IDEMPOTENCY_KEY_REUSED`                          | Committed key reused for another payload or command                |
-| `BOOKING_REQUEST_NOT_FOUND`                       | No receipt found in this in-memory server                          |
+| `BOOKING_REQUEST_NOT_FOUND`                       | No receipt found in the configured booking store                          |
 | `INVALID_EQUIPMENT` / `INVALID_STATUS`            | Unknown filter value                                               |
 | `INVALID_CAPACITY_FILTER` / `INVALID_DATE_FILTER` | Invalid filter range                                               |
 | `INVALID_REQUEST`                                 | Malformed bound request fields                                     |
@@ -109,6 +111,8 @@ Usage errors are `INVALID_REPORT_RANGE` for missing/reversed endpoints, `REPORT_
 
 ## Task-focused read models
 
-`GET /api/reservation-feed` returns `{items,totalCount,page,pageSize}`. `view=upcoming` is the default and includes ongoing/future Booked reservations, nearest start first. `view=history` includes completed/cancelled reservations, newest start first. Equal start times use reservation ID as a stable tie-breaker. `roomId`, `organizerId`, `status`, `from` and `to` retain the existing filter semantics. Page defaults to 1, page size to 6 (maximum 50). Counts and pagination follow filtering inside one consistent read snapshot. The original `/api/reservations` array contract remains available.
+`GET /api/room-suggestions?roomId=...&organizerId=...&attendees=6&startUtc=...&endUtc=...` returns at most one `{room,missingEquipment}` alternative. The active room must have fewer seats than the selected room, fit every attendee and be free for the full interval for both the room and organizer. Similar equipment is preferred, then smaller capacity, the same floor and name. Optional `equipment` lists requirements that cannot be dropped. `missingEquipment` explicitly names features of the selected room absent in the alternative. Optional `excludeReservationId` ignores the booking being edited after checking member access. This read never changes or holds a reservation; the usual save command remains authoritative.
+
+`GET /api/reservation-feed` returns `{items,totalCount,page,pageSize}`. `view=upcoming` is the default and includes ongoing/future Booked reservations, nearest start first. `view=history` includes completed/cancelled reservations, newest start first. Equal start times use reservation ID as a stable tie-breaker. `roomId`, `organizerId`, `status`, `from` and `to` retain the existing filter semantics. Page defaults to 1, page size to 6 (maximum 50). Counts and pagination follow filtering inside one consistent read snapshot. The original `/api/reservations` array contract remains available. Both routes apply member scope on the server. Optional `focusId` selects the page containing that reservation after filtering, allowing a saved booking to appear in its chronological position; it cannot bypass member scope.
 
 `GET /api/room-availability?startUtc=...&endUtc=...&organizerId=...` returns an array of `{roomId,isAvailable,reason}` for the selected interval. Organizer is optional. Invalid common time ranges return a normal 400; an unknown organizer returns 404. The same booking rules account for overlapping room and organizer bookings, cancelled intervals, early release and inactive rooms. This endpoint does not hold a room; saving always revalidates under the write gate.

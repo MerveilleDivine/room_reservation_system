@@ -20,7 +20,9 @@ These are folders within one API project, not separate deployable services. Extr
 
 **Consequences:** this is not a relational database or a production persistence strategy. Referential checks are explicit. A singleton write gate protects validation plus save only within this one API process. InMemory does not supply the relational guarantees needed for multiple deployed instances.
 
-**Production direction, not implemented:** move to a relational provider, enforce required relationships, implement a database-backed concurrency/overlap strategy and integration-test it against that real provider. The process-local semaphore does not protect writes across instances.
+**Hosting decision:** run the same InMemory code in one server process, with React assets served by ASP.NET. `render.yaml` selects Render's free single-instance service. A database service, distributed locks and schema migrations are unnecessary for this assignment. Server restarts reset the synthetic data; ordinary browser refreshes do not. The API rejects Vercel execution because independent instances would create inconsistent stores.
+
+`BookingWriteGate.EnterAsync` returns a disposable lease. A `using` scope releases the semaphore even after failed validation or cancellation, keeping the booking decision and save in one protected operation. This remains a demo-scoped concurrency mechanism, not a distributed guarantee.
 
 Reference: [Microsoft EF Core InMemory guidance](https://learn.microsoft.com/en-us/ef/core/providers/in-memory/).
 
@@ -57,7 +59,7 @@ The usage report labels scheduled, reported and unconfirmed minutes separately. 
 
 **Tradeoff:** no persistent client cache or router yet. Reloading returns to the personal upcoming schedule. A query library or router would become useful for persistent caching, deep links or more complex navigation.
 
-**Refresh:** mutation success reloads API-derived state, and the Refresh workspace button reloads the current view on demand. There is no periodic API polling: an unattended demo tab must not keep a serverless container awake. Displayed statuses and allowed actions describe the last response. Backend checks remain authoritative if a button's availability changes between refresh and click.
+**Refresh:** mutation success reloads API-derived state, and the Refresh workspace button reloads the current view on demand. There is no periodic API polling: an unattended demo tab must not generate background traffic. Displayed statuses and allowed actions describe the last response. Backend checks remain authoritative if a button's availability changes between refresh and click.
 
 ## ADR 6: predictable failures
 
@@ -96,9 +98,9 @@ The browser recovery test forwards a POST to the actual ASP.NET API, lets it com
 
 ## ADR 11: selectable profiles and reservation ownership
 
-A small header selector switches between the seeded people and Administrator. Members can view all reservations but create only for themselves and manage only their own bookings. Administrator can manage every organizer. The selected profile is stored per tab in session storage, with an in-memory fallback if storage is unavailable.
+A small header selector switches between the seeded people and Administrator. Members can read, create and manage only their own reservations. Administrator can manage every organizer. The selected profile is stored per tab in session storage, with an in-memory fallback if storage is unavailable.
 
-The browser includes `X-Roomwise-Profile` on API requests. `BookingProfile` checks the selected person against the existing in-memory people, while `ReservationService` checks ownership under its write gate. Edits check both the existing owner and requested organizer, preventing reassignment as a workaround. Request recovery and replay check the reservation's current owner. Missing or invalid profiles cannot make changes.
+The browser includes `X-Roomwise-Profile` on API requests. `BookingProfile` checks the selected person against the existing in-memory people, while `ReservationService` checks ownership under its write gate. Edits check both the existing owner and requested organizer, preventing reassignment as a workaround. Request recovery and replay check the reservation's current owner. Missing or invalid profiles cannot read private booking details or make changes. Reservation list, feed and detail endpoints enforce the selected member. Usage and aggregate booking counts are limited to Administrator.
 
 These are deliberately selectable sample profiles, not authenticated accounts. The header is user-controlled; production authorization would require a verified identity and trusted role assignments. Those distinctions belong in the engineering documentation rather than repeated notices in the interface.
 
@@ -108,8 +110,14 @@ React derives action visibility from the selected profile and the API's lifecycl
 
 The personal upcoming schedule is the application entry point. `ReservationFeedService` provides explicit upcoming/history views, stable sorting, organizer/room/status/date filtering and bounded pagination in one read snapshot. The existing unpaginated reservations endpoint keeps its array contract for integrations and tests. Upcoming includes ongoing Booked reservations; naturally completed and cancelled records appear only in History.
 
-A successful mutation returns the committed DTO to a temporary confirmation card above the feed. This gives immediate visibility without making future planning use creation order. Saving resets irrelevant filters and pagination; switching profiles or views clears confirmation state. The API hook cancels superseded requests and hides data belonging to an old query while a new one loads.
+A successful mutation returns the committed DTO for a short confirmation above the feed. The booking stays in the canonical chronological list; `focusId` resolves its actual page instead of removing the row or creating a separate editable copy. Saving resets irrelevant filters; switching profiles, pages or filters clears confirmation state. The API hook cancels superseded requests and hides data belonging to an old query while a new one loads.
 
 `RoomAvailabilityService` evaluates a chosen interval against the same time and overlap policies as booking writes. The room finder carries its checked room and interval into the form. Every search, including unchanged dates, requests a fresh snapshot. Changing draft dates disables booking until searched. An unavailable lookup is not shown as proof that a room is booked. The write gate still revalidates conflicts when the booking is saved.
 
 See [product-design.md](product-design.md) for the researched workflows, information hierarchy and acceptance criteria.
+
+## ADR 13: optional smaller-room suggestions
+
+The existing availability service reuses booking rules to suggest at most one smaller active room for the complete interval and attendee count. It preserves explicit equipment requirements, prefers similar equipment, then smaller capacity and the same floor. Differences from the selected room are returned separately so the user can make an informed choice. An edit can exclude its existing booking only after an ownership check. No reservation details or other organizers are returned.
+
+React waits 250 ms after changes to the relevant fields, cancels obsolete lookups and immediately hides a suggestion belonging to an older selection. Choosing a suggestion changes only the room; ignoring it keeps the original choice. A failed optional lookup does not block normal booking. Suggestions neither hold nor create reservations, and saving rechecks conflicts under the existing write gate. This adds no polling, state-management dependency or infrastructure service.

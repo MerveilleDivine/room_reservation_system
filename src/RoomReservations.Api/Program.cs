@@ -12,6 +12,8 @@ builder.Services.AddOptions<BookingOptions>()
     .Validate(options => options.MaximumDurationDays is > 0 and <= 365, "Duration must be between 1 and 365 days.")
     .Validate(options => options.MaximumAdvanceDays is > 0 and <= 3650, "Advance window must be between 1 and 3650 days.")
     .ValidateOnStart();
+if (Environment.GetEnvironmentVariable("VERCEL") == "1")
+    throw new InvalidOperationException("This InMemory demo requires one server process. Use the single-instance host in render.yaml or run locally.");
 builder.Services.AddDbContext<ReservationsDbContext>(options => options.UseInMemoryDatabase("room-reservations"));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<BookingWriteGate>();
@@ -22,6 +24,7 @@ builder.Services.AddScoped<ReservationService>();
 builder.Services.AddScoped<UsageReportService>();
 builder.Services.AddScoped<ReservationFeedService>();
 builder.Services.AddScoped<RoomAvailabilityService>();
+builder.Services.AddScoped<ExtraTimeService>();
 
 var app = builder.Build();
 app.UseExceptionHandler();
@@ -33,9 +36,8 @@ if (Directory.Exists(app.Environment.WebRootPath))
 app.MapReservationApi();
 await using (var scope = app.Services.CreateAsyncScope())
 {
-    await SeedData.InitializeAsync(
-        scope.ServiceProvider.GetRequiredService<ReservationsDbContext>(),
-        scope.ServiceProvider.GetRequiredService<TimeProvider>());
+    var db = scope.ServiceProvider.GetRequiredService<ReservationsDbContext>();
+    await SeedData.InitializeAsync(db, scope.ServiceProvider.GetRequiredService<TimeProvider>());
 }
 app.Run();
 

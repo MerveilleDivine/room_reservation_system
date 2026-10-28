@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
-import type { Reservation } from '../api/contracts';
+import type { ExtraTimeAvailability, Reservation } from '../api/contracts';
+import { useApi } from '../hooks/useApi';
 import { useSubmissionKey } from '../hooks/useSubmissionKey';
 import { formatDate, formatTime } from '../lib/dates';
 import { Icon } from './Icon';
@@ -17,12 +18,25 @@ interface Props {
 
 export function ContinuationDialog({ reservation, onSave, onClose }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const durationInput = useRef<HTMLSelectElement>(null);
+  const durationInput = useRef<HTMLInputElement>(null);
   const [additionalMinutes, setAdditionalMinutes] = useState(15);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const submissionKey = useSubmissionKey();
   const unconfirmed = error instanceof ApiError && error.outcomeUnknown;
+  const [revision, setRevision] = useState(0);
+  const availability = useApi<ExtraTimeAvailability>(
+    `/reservations/${reservation.id}/extra-time`,
+    revision,
+  );
+  const maximum = availability.data?.maximumMinutes ?? 0;
+  const canReserve =
+    maximum > 0 && !availability.error && additionalMinutes <= maximum;
+
+  useEffect(() => {
+    if (maximum > 0 && !unconfirmed)
+      setAdditionalMinutes((value) => Math.min(value, maximum));
+  }, [maximum, unconfirmed]);
 
   useEffect(() => {
     const element = dialog.current;
@@ -30,6 +44,10 @@ export function ContinuationDialog({ reservation, onSave, onClose }: Props) {
     durationInput.current?.focus();
     return () => element?.close();
   }, []);
+
+  useEffect(() => {
+    if (!availability.loading && maximum > 0) durationInput.current?.focus();
+  }, [availability.loading, maximum]);
 
   function dismiss() {
     dialog.current?.close();
@@ -52,6 +70,8 @@ export function ContinuationDialog({ reservation, onSave, onClose }: Props) {
           ? failure
           : new Error('Could not reserve extra time.'),
       );
+      if (!(failure instanceof ApiError && failure.outcomeUnknown))
+        setRevision((value) => value + 1);
     } finally {
       setSaving(false);
     }
@@ -90,7 +110,8 @@ export function ContinuationDialog({ reservation, onSave, onClose }: Props) {
           <h3>{reservation.title}</h3>
           <p>
             {reservation.roomName} · {reservation.organizerName} ·{' '}
-            {reservation.attendees} people
+            {reservation.attendees}{' '}
+            {reservation.attendees === 1 ? 'person' : 'people'}
           </p>
           <p>
             Extra time starts {formatDate(reservation.endUtc)} at{' '}
@@ -99,19 +120,56 @@ export function ContinuationDialog({ reservation, onSave, onClose }: Props) {
         </div>
         <label>
           Additional time
-          <select
+          <input
+            type="number"
+            min={1}
+            max={maximum || 1}
+            step={1}
+            required
             ref={durationInput}
             value={additionalMinutes}
-            disabled={saving || unconfirmed}
+            disabled={saving || unconfirmed || !maximum}
             onChange={(event) =>
               setAdditionalMinutes(Number(event.target.value))
             }
-          >
-            <option value={15}>15 minutes</option>
-            <option value={30}>30 minutes</option>
-            <option value={60}>1 hour</option>
-          </select>
+          />
         </label>
+        {availability.loading ? (
+          <p role="status">Checking available time…</p>
+        ) : availability.error ? (
+          <div className="notice error" role="alert">
+            {availability.error.message}{' '}
+            <button
+              type="button"
+              onClick={() => setRevision((value) => value + 1)}
+            >
+              Check again
+            </button>
+          </div>
+        ) : availability.data ? (
+          <div className="continuation-context">
+            <p>
+              {maximum > 0
+                ? `Up to ${maximum} additional minutes available.`
+                : (availability.data.message ?? 'No extra time is available.')}
+            </p>
+            {availability.data.blockedFromUtc &&
+            availability.data.blockedUntilUtc ? (
+              <p>
+                {availability.data.reasonCode === 'ORGANIZER_OVERLAP'
+                  ? 'Your next meeting'
+                  : 'The next room booking'}
+                : {formatDate(availability.data.blockedFromUtc)} at{' '}
+                {formatTime(availability.data.blockedFromUtc)}–
+                {formatDate(availability.data.blockedFromUtc) !==
+                formatDate(availability.data.blockedUntilUtc)
+                  ? `${formatDate(availability.data.blockedUntilUtc)} at `
+                  : ''}
+                {formatTime(availability.data.blockedUntilUtc)}.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         <p className="form-note">
           Extra time is reserved separately. Cancel it if you no longer need it.
         </p>
@@ -129,7 +187,10 @@ export function ContinuationDialog({ reservation, onSave, onClose }: Props) {
           >
             Go back
           </button>
-          <button className="button primary" disabled={saving}>
+          <button
+            className="button primary"
+            disabled={saving || (!unconfirmed && !canReserve)}
+          >
             {saving
               ? 'Reserving…'
               : unconfirmed

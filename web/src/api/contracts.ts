@@ -47,6 +47,11 @@ export interface RoomAvailability {
   reason: string | null;
 }
 
+export interface RoomSuggestion {
+  room: Room;
+  missingEquipment: Equipment[];
+}
+
 export interface BookingRequest {
   roomId: string;
   organizerId: string;
@@ -66,6 +71,15 @@ export interface ReservationFeed {
 export interface BookingPolicy {
   maximumDurationDays: number;
   maximumAdvanceDays: number;
+}
+
+export interface ExtraTimeAvailability {
+  maximumMinutes: number;
+  startsAtUtc: string;
+  blockedFromUtc: string | null;
+  blockedUntilUtc: string | null;
+  reasonCode: string | null;
+  message: string | null;
 }
 
 export interface RoomUsage {
