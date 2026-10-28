@@ -1,223 +1,193 @@
 # Roomwise
 
-### A room. A time. A booking that actually holds.
+**Find a room. Make a plan. Keep everyone’s time clear.**
 
-You book a meeting room, arrive with your team, and someone else is already there. Lovely.
+Roomwise is a meeting-room reservation app. Find a space that fits your group, check that it is free for the whole meeting, and manage your booking as plans change. If you finish early, release the room. If you need longer, see how much extra time is available.
 
-Roomwise handles the scheduling side of that problem: find a room, make a reservation, and check that both the space and the organizer are free. If the meeting finishes early, release the room. If it needs more time, reserve the next slot without pushing somebody else's meeting out of the way.
+Built for an internship technical assignment with **ASP.NET Core, Entity Framework Core InMemory, React and TypeScript**. Booking rules and calculations run in the backend; React handles the interface.
 
-I built Roomwise for an internship technical assignment using ASP.NET Core, EF Core InMemory, React and TypeScript.
+**[Open Roomwise](https://roomwise-reservations.onrender.com/)** · [Run locally](#run-locally) · [How it works](#how-it-works) · [Architecture](docs/architecture.md)
 
-[Try Roomwise](https://roomwise-reservations.onrender.com/) · [Run locally](#run-it-locally) · [Architecture](docs/architecture.md) · [API](docs/api.md) · [Verification](docs/verification.md)
+## Try it out
 
-No account needed. Choose a profile in the header and start with what’s next.
+No account setup is needed. Choose a sample profile in the header to explore the app.
 
-## Give it five minutes
+1. **Find your next meeting.** Reservations opens on your own upcoming bookings. History holds completed and cancelled meetings.
+2. **Find a room.** Open Rooms, choose the start and end, then select **Find a room**. Filter by group size, floor or equipment when needed.
+3. **Make a reservation.** Choose **Book this room**, add a meeting title and the number of attendees, and check the details. The selected room and times carry into the form. Your organizer is filled in for a member profile.
+4. **Consider a smaller space.** If a smaller suitable room is available, the form offers it as an option. Choose **Use Birch**, for example, to switch, or keep your original room.
+5. **See your booking in Upcoming.** After saving, the app opens the page containing your reservation in its chronological place. You can edit or cancel it before it starts.
+6. **Manage a meeting in progress.** Check in, reserve more time or end early to release the remaining time.
 
-1. Choose a profile. Your personal upcoming reservations open first, with a greeting. Administrator sees the workspace schedule.
-2. Open Rooms, choose a start and end time, and find a space. The compact room grid shows availability for that interval. Capacity, floor and equipment filters are there when needed.
-3. Book a room. Your selected room and time carry into the form, and your organizer is filled in for a member profile.
-4. Your confirmed reservation appears in Upcoming. The app opens its page, even if it is weeks away, and keeps the schedule in chronological order.
-5. Open History for past or cancelled meetings. Members see their own bookings; Administrator can filter the workspace schedule. Results are paginated six at a time.
-6. Edit or cancel an upcoming booking. For a meeting in progress, check in, reserve more time or end early. Actions follow the selected profile and the meeting's current state.
-7. As Administrator, open People or Usage for organizer counts and room activity.
+Choose **Administrator** to explore the full workspace schedule, the People view and Usage reports. Member profiles see their own reservation details.
 
-Times use your device's timezone and are sent to the API as UTC instants. Room availability is a snapshot; saving repeats all conflict checks. Extra time is a separate linked booking and must fit the room and organizer schedules.
+The hosted demo runs on Render’s free service. After an idle period, its first load can take about a minute. Bookings stay through browser refreshes while the server is running; a server restart or redeployment resets the sample data.
 
-The reservation form can suggest one smaller room that fits the attendee count and is free for the full meeting. It keeps explicit equipment requirements, shows any equipment differences, and changes the room only when you choose the suggestion. Saving rechecks availability.
+## How it works
 
-The app uses synthetic EF Core InMemory data in one server process. Browser refreshes preserve bookings while the process runs. A server restart resets the demo; seed IDs remain stable, and the ongoing example eventually ends.
+### A room that fits your group
 
-[Read the product design and research](docs/product-design.md) for the reasoning behind the flow.
+Say you select **Atlas, which seats 12**, for **6 people**. If **Birch, which seats 6**, is free for the entire meeting, Roomwise can suggest it.
 
-## Who can change a booking?
+The suggestion shows the room’s capacity, floor and equipment, including equipment differences from your selected room. Equipment requirements chosen in the room finder are kept. You decide whether to switch; accepting changes only the room and preserves the other meeting details.
 
-Members can browse room availability, read their own booking details, and create and manage their own reservations. Administrator can read and manage every organizer's reservations and view People and Usage. List, feed, individual lookup and recovery enforce the selected profile on the server.
+A suggestion is an availability check, not a reservation. Saving checks everything again, including whether somebody has booked that room in the meantime.
 
-The selection stays in session storage for the current browser tab. Switching profiles closes open forms. The API checks ownership inside the same write gate used for booking validation, including edits, cancellations, check-in, early completion, extra time and confirmation recovery.
+### A meeting needs a little longer
 
-Profiles are selectable sample identities, not authenticated accounts. The `X-Roomwise-Profile` header carries the chosen person ID or `admin`; anyone can switch it. This models the workflow without adding account infrastructure to an assignment that excludes authentication.
+The extra-time form shows the available gap before the next room or organizer booking. If there are **2 minutes free**, you can reserve up to **2 minutes**. If the next meeting starts immediately afterward, there is no extra time available.
 
-## The part I cared about
+The next booking’s time interval is shown without its meeting title or organizer. Extra time creates a separate reservation linked to the original meeting, and the server checks the gap again when you save.
 
-Getting a booking onto a screen is one part of the work. Deciding what happens when two requests arrive together, or when a saved booking loses its confirmation on the way back, takes a little more thought.
+### Meetings finish early, or plans change
 
-### Two people want the same slot
+You can edit or cancel a future booking. During a meeting, ending early releases the unused portion of the reservation. Cancelled bookings also release their time.
 
-Booking writes share a process-wide gate. Validation and saving run within that gate, so concurrent requests cannot both reserve overlapping room or organizer intervals. The gate is released on both success and failure.
+Check-in is a manual record of reported use. Usage reports distinguish scheduled time, reported use, unconfirmed time and time released early. A missing check-in is treated as unconfirmed use. See the [usage definitions](docs/usage-report.md) for how those figures are calculated.
 
-One API process is a deliberate deployment constraint of the required InMemory provider. The hosted configuration uses one instance. A distributed service would need different storage and concurrency requirements.
+### Two requests arrive at the same time
 
-### The booking saved. The response disappeared.
+The backend checks and saves booking changes together, one at a time, within the server process. That prevents two overlapping requests from both taking the same room or organizer slot.
 
-Create, edit and additional-time requests carry a request identifier. The server stores a receipt so the client can recover the confirmation instead of immediately creating another booking.
+Create, edit and extra-time requests also have identifiers that let the app recover a lost confirmation without creating another copy of the booking. These receipts last for the current server process.
 
-Receipts last for the current server process. They support retrying a lost confirmation without duplicating the booking, but do not survive server replacement. Lifecycle actions refresh the schedule after an error so stale controls do not remain on screen.
+## Booking rules
 
-### A meeting needs two more minutes
+The default policy follows the assignment:
 
-The extra-time form asks the server for the exact free gap before the next room or organizer booking. A two-minute gap allows two minutes; an adjacent booking allows none. It shows the blocking interval without the next meeting's title or organizer. Saving rechecks the gap under the booking gate because availability is a snapshot rather than a hold.
+| Rule                   | What it means                                                                 |
+| ---------------------- | ----------------------------------------------------------------------------- |
+| Duration               | Up to 7 days per reservation; exactly 7 days is allowed.                      |
+| Room availability      | Reservations for the same room cannot overlap.                                |
+| Organizer availability | An organizer cannot have overlapping meetings, including in different rooms.  |
+| Dates                  | The start must be in the future, and the end must follow the start.           |
+| Attendees              | A positive whole number, including the organizer, within the room’s capacity. |
+| Advance booking        | A reservation can start up to 90 days ahead.                                  |
+| Active rooms           | Only active rooms can be booked.                                              |
 
-### A booked room is not proof of a used room
+Back-to-back meetings are allowed: one can start exactly when another ends. Dates are entered in your device’s local timezone and sent to the API as UTC instants.
 
-The usage report separates scheduled time, reported use, unconfirmed time and time released by early completion.
+The duration and advance limits can be changed in [appsettings.json](src/RoomReservations.Api/appsettings.json). A day means 24 elapsed hours.
 
-Manual check-in supplies a limited estimate of use. Missing check-in does not prove a no-show. Reaching the scheduled end does not prove that everyone left. The report makes those limits explicit.
+## Tech stack
 
-[Read the metric definitions](docs/usage-report.md).
+| Part     | Technology                                                                |
+| -------- | ------------------------------------------------------------------------- |
+| Backend  | ASP.NET Core on .NET 10                                                   |
+| Data     | Entity Framework Core InMemory with seeded rooms, people and reservations |
+| Frontend | React 19, TypeScript and Vite                                             |
+| Testing  | xUnit, Vitest, React Testing Library and Playwright                       |
+| Delivery | GitHub Actions, Docker and a single-instance Render service               |
 
-## What is included
+The app uses one API project, one backend test project and one frontend. No external database, secrets or database account are needed to run it locally.
 
-| Area         | What you can do                                                                                         |
-| ------------ | ------------------------------------------------------------------------------------------------------- |
-| Rooms        | Browse rooms, see equipment and active status, filter by capacity, floor and multiple equipment options |
-| People       | View organizers, unique IDs and active reservation counts calculated by the backend                     |
-| Reservations | Create, edit, cancel, check in, reserve additional time and end early                                   |
-| Filters      | Find reservations by room, organizer, status and date range                                             |
-| Usage        | Compare scheduled, reported, unconfirmed and early-released time                                        |
-| Interface    | Use desktop or mobile layouts, keyboard-accessible dialogs and clear loading, empty and error states    |
+## Run locally
 
-All seven required booking rules are enforced in the backend:
+### 1. Get the project
 
-- A reservation can last up to seven days. Exactly seven days is valid.
-- Room bookings cannot overlap.
-- An organizer cannot have overlapping meetings, even in different rooms.
-- The start must be in the future, and the end must follow the start.
-- Attendees cannot exceed the room's capacity.
-- A reservation can start up to 90 days ahead.
-- Inactive rooms cannot be booked.
+Install Git, the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) and [Node.js](https://nodejs.org/en/download). Node 24.15 or later in the 24.x series is supported; see [package.json](web/package.json) for other supported versions. Install the .NET **SDK**, which includes the tools to build the app.
 
-Adjacent bookings are allowed: one meeting can start exactly when another ends. Cancelled reservations do not block availability, and early completion releases the unused remainder.
-
-The duration and advance limits are configurable.
-
-## Run it locally
-
-You need Git, the [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) and [Node.js](https://nodejs.org/en/download). Supported Node versions are 22.22.2+, 24.15+ or 26+. Install the .NET SDK, not just the runtime.
-
-```powershell
+```sh
 git clone https://github.com/MerveilleDivine/room_reservation_system.git
 cd room_reservation_system
 ```
 
-Start the API from the repository root:
+Open this folder in VS Code or your preferred editor.
 
-```powershell
+### 2. Start the API
+
+From the repository root:
+
+```sh
 dotnet restore RoomReservations.slnx
 dotnet run --project src/RoomReservations.Api
 ```
 
-In a second terminal, also from the repository root:
+Leave this terminal running. The API runs on port 5080. Open its [health check](http://localhost:5080/api/health) to confirm it is ready.
 
-```powershell
+### 3. Start the frontend
+
+Open a second terminal at the repository root:
+
+```sh
 cd web
 npm ci
 npm run dev
 ```
 
-Open [http://127.0.0.1:5173](http://127.0.0.1:5173).
+Open **[http://127.0.0.1:5173](http://127.0.0.1:5173)** and choose a profile. Vite forwards API requests to the backend on port 5080.
 
-Vite forwards `/api` requests to the ASP.NET server at `http://127.0.0.1:5080`. You can check the API at [http://localhost:5080/api/health](http://localhost:5080/api/health).
+If the page cannot reach the API, check that both terminals are still running. If `dotnet` is not recognized after installation, restart your terminal. VS Code’s **Terminal → Run Task** menu also includes API, frontend and test commands.
 
-There are no secrets, environment files or database accounts to configure.
+### Prefer Docker?
 
-If `dotnet` is not recognized after installation, restart your terminal. If the frontend cannot reach the API, check that the first terminal is still running.
+With Docker installed, run these commands from the repository root:
 
-In VS Code, Terminal → Run Task also provides API, web and test commands. C# Dev Kit can discover the solution.
-
-## Where things live
-
-| Location                                  | Responsibility                                                 |
-| ----------------------------------------- | -------------------------------------------------------------- |
-| `src/RoomReservations.Api/Domain`         | Entities and reservation lifecycle                             |
-| `src/RoomReservations.Api/Application`    | Booking rules, services, usage calculations and DTO mapping    |
-| `src/RoomReservations.Api/Infrastructure` | EF Core context, seed data and the write gate                  |
-| `src/RoomReservations.Api/Api`            | HTTP endpoints and Problem Details errors                      |
-| `tests/RoomReservations.Api.Tests`        | Backend rule, API, recovery and concurrency tests              |
-| `web/src/api`                             | Typed API contracts and HTTP client                            |
-| `web/src/pages`                           | Page-level views and filtering                                 |
-| `web/src/components`                      | Booking forms and reusable interface components                |
-| `docs`                                    | Requirements, decisions, assumptions and verification evidence |
-
-One API project, one test project and one frontend keep the structure manageable for this scope. Booking decisions and report calculations stay in the backend. React handles interaction and presentation.
-
-The [architecture notes](docs/architecture.md) explain the choices and their trade-offs.
-
-## Check the work
-
-Backend, from the repository root:
-
-```powershell
-dotnet test RoomReservations.slnx
-```
-
-Frontend, from `web`:
-
-```powershell
-npm run check
-```
-
-The frontend command checks TypeScript, builds the production app, runs unit tests and checks formatting. For development, `npm run test:watch` runs tests as you work.
-
-For browser tests, close the development servers so their ports are free, then run from `web`:
-
-```powershell
-npx playwright install chromium
-npm run test:e2e
-```
-
-Playwright starts the real API and frontend with fresh seed data. The browser scenarios cover booking, reload, editing, cancellation, conflicts, additional time, lost confirmations, check-in, early completion, usage filtering, mobile layout, keyboard focus, concurrent requests and profile ownership.
-
-GitHub Actions checks both the two-server development setup and the published container.
-
-See the [verification record](docs/verification.md) for source revisions, test counts, run links and environment limits. Both browser setups use the real ASP.NET API and the assignment-required EF Core InMemory provider.
-
-## Change the booking policy
-
-Edit `src/RoomReservations.Api/appsettings.json`:
-
-```json
-{
-  "BookingRules": {
-    "MaximumDurationDays": 7,
-    "MaximumAdvanceDays": 90
-  }
-}
-```
-
-Configuration is validated at startup. The current limits are available from `/api/booking-policy`.
-
-A day here means 24 elapsed hours. An explicit office timezone and a policy for ambiguous daylight-saving times would be needed for broader scheduling requirements.
-
-## Run the container
-
-```powershell
+```sh
 docker build --tag roomwise .
 docker run --rm --publish 8080:8080 roomwise
 ```
 
-Open [http://localhost:8080](http://localhost:8080).
+Then open [http://localhost:8080](http://localhost:8080). The container builds the frontend and serves both the app and API through ASP.NET on the same port.
 
-The container builds React and publishes ASP.NET into one non-root image. ASP.NET serves the frontend and API from the same origin. No database account, connection secret or additional service is required.
+## Check the work
 
-The [hosted demo](https://roomwise-reservations.onrender.com/) runs on Render's free single-instance service in Frankfurt. Releases are manual, after CI verification. `render.yaml` records a reusable service configuration. The free service sleeps after idle periods; waking it may take about a minute and resets the in-memory demo. Only synthetic information belongs here.
+Run backend tests from the repository root:
 
-Vercel's independently scaled server instances cannot share this process's memory. The API refuses to start there rather than presenting an inconsistent booking store. The old Vercel address forwards to the single-instance app using a small static redirect page; it no longer runs a separate booking backend. See [hosting.md](docs/hosting.md).
+```sh
+dotnet test RoomReservations.slnx
+```
 
-To target an already running disposable instance with browser tests, set `PLAYWRIGHT_BASE_URL`. The suite changes booking data and expects fresh seeds.
+Run frontend checks from `web`:
 
-## What I would do next
+```sh
+npm run check
+```
 
-Calendar/timeline views and PDF export are optional features from the brief and are not implemented.
+This checks TypeScript, builds the frontend, runs unit tests and checks formatting.
 
-For real office use, the next work includes authenticated identities and trusted role assignment, schema migrations, capacity planning and an explicit office timezone policy. Selectable demo profiles do not protect private real-world bookings.
+For browser tests, stop the local development servers so their ports are free, then run from `web`:
 
-## A little more detail
+```sh
+npx playwright install chromium
+npm run test:e2e
+```
 
-- [Requirements and acceptance criteria](docs/requirements.md)
-- [Architecture and decisions](docs/architecture.md)
-- [Implementation plan](docs/implementation-plan.md)
-- [API contract](docs/api.md)
-- [Verification record](docs/verification.md)
+Playwright starts the real API and frontend with fresh sample data. Tests cover creating, reloading, editing and cancelling bookings; smaller-room suggestions; conflicts; extra time; lost confirmations; profile ownership; usage reports; and mobile and keyboard interactions.
+
+GitHub Actions also runs the browser scenarios against the published Docker container. The [verification record](docs/verification.md) links the passing runs and records the exact source revisions, test counts and live checks.
+
+## Find your way around the code
+
+| Folder                                    | What belongs there                                                         |
+| ----------------------------------------- | -------------------------------------------------------------------------- |
+| `src/RoomReservations.Api/Domain`         | Rooms, people, reservations and reservation states                         |
+| `src/RoomReservations.Api/Application`    | Booking rules, availability, suggestions, reservation services and reports |
+| `src/RoomReservations.Api/Infrastructure` | EF Core context, sample data and the booking write gate                    |
+| `src/RoomReservations.Api/Api`            | HTTP endpoints and consistent API errors                                   |
+| `web/src`                                 | React pages, forms, API client and interface components                    |
+| `tests/RoomReservations.Api.Tests`        | Backend rule, API, recovery and concurrency tests                          |
+| `web/e2e`                                 | Browser tests using the real API                                           |
+| `docs`                                    | Requirements, decisions, API reference and verification evidence           |
+
+Start with the [architecture notes](docs/architecture.md) for the reasons behind the structure and its trade-offs.
+
+## Demo scope and hosting
+
+The assignment uses **EF Core InMemory**. Rooms and people are preloaded; creating or administering rooms and people is outside this version’s scope. Bookings and request receipts live in one server process and reset when that process restarts. Running one instance keeps every browser connected to the same booking store.
+
+Profiles are selectable demo identities, with member and administrator views. They demonstrate ownership rules without account authentication. Use sample information in the public demo; real office use would need authenticated users, trusted roles and durable storage.
+
+The current app is hosted on Render. The old Vercel address forwards to it. Deployment configuration is in [render.yaml](render.yaml), with the setup explained in [hosting.md](docs/hosting.md).
+
+Optional calendar/timeline views and PDF export from the brief remain future work.
+
+## More detail
+
+- [Assignment requirements and acceptance criteria](docs/requirements.md)
+- [Architecture and engineering decisions](docs/architecture.md)
+- [API reference](docs/api.md)
+- [Test results and live verification](docs/verification.md)
 - [Usage report definitions](docs/usage-report.md)
-- [Workspace photograph credit](web/public/images/CREDITS.md)
+- [Hosting and deployment](docs/hosting.md)
+- [Image credits](web/public/images/CREDITS.md)
