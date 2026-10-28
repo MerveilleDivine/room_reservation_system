@@ -4,6 +4,8 @@
 
 Roomwise is a meeting-room reservation app. Find a space that fits your group, check that it is free for the whole meeting, and manage your booking as plans change. If you finish early, release the room. If you need longer, see how much extra time is available.
 
+I kept coming back to the human part: what if the meeting runs over, someone has booked straight after us, or six people are about to take a room for twelve? Those are the details I wanted Roomwise to handle properly.
+
 Built for an internship technical assignment with **ASP.NET Core, Entity Framework Core InMemory, React and TypeScript**. Booking rules and calculations run in the backend; React handles the interface.
 
 **[Open Roomwise](https://roomwise-reservations.onrender.com/)** · [Run locally](#run-locally) · [How it works](#how-it-works) · [Architecture](docs/architecture.md)
@@ -29,11 +31,15 @@ The hosted demo runs on Render’s free service. After an idle period, its first
 
 Say you select **Atlas, which seats 12**, for **6 people**. If **Birch, which seats 6**, is free for the entire meeting, Roomwise can suggest it.
 
+If there is a better fit, let’s at least offer it. You may still have a good reason to keep the larger room.
+
 The suggestion shows the room’s capacity, floor and equipment, including equipment differences from your selected room. Equipment requirements chosen in the room finder are kept. You decide whether to switch; accepting changes only the room and preserves the other meeting details.
 
 A suggestion is an availability check, not a reservation. Saving checks everything again, including whether somebody has booked that room in the meantime.
 
 ### A meeting needs a little longer
+
+Meetings run over. The next team also needs its room on time.
 
 The extra-time form shows the available gap before the next room or organizer booking. If there are **2 minutes free**, you can reserve up to **2 minutes**. If the next meeting starts immediately afterward, there is no extra time available.
 
@@ -46,6 +52,8 @@ You can edit or cancel a future booking. During a meeting, ending early releases
 Check-in is a manual record of reported use. Usage reports distinguish scheduled time, reported use, unconfirmed time and time released early. A missing check-in is treated as unconfirmed use. See the [usage definitions](docs/usage-report.md) for how those figures are calculated.
 
 ### Two requests arrive at the same time
+
+A confirmation should mean the booking is actually there, even when two people click at once.
 
 The backend checks and saves booking changes together, one at a time, within the server process. That prevents two overlapping requests from both taking the same room or organizer slot.
 
@@ -170,7 +178,7 @@ GitHub Actions also runs the browser scenarios against the published Docker cont
 | `web/e2e`                                 | Browser tests using the real API                                           |
 | `docs`                                    | Requirements, decisions, API reference and verification evidence           |
 
-Start with the [architecture notes](docs/architecture.md) for the reasons behind the structure and its trade-offs.
+I wanted the structure to be easy to follow, with the booking rules in one place. Start with the [architecture notes](docs/architecture.md) for the decisions and their trade-offs.
 
 ## Demo scope and hosting
 
