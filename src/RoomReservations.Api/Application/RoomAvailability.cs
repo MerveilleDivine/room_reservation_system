@@ -11,7 +11,7 @@ public sealed class RoomAvailabilityService(
     public async Task<RoomAvailabilityDto[]> ReadAsync(
         DateTimeOffset startUtc, DateTimeOffset endUtc, Guid? organizerId, CancellationToken cancellationToken)
     {
-        await gate.Semaphore.WaitAsync(cancellationToken);
+        var lease = await gate.AcquireAsync(db, cancellationToken);
         try
         {
             var now = clock.GetUtcNow();
@@ -36,6 +36,6 @@ public sealed class RoomAvailabilityService(
                 }
             }).ToArray();
         }
-        finally { gate.Semaphore.Release(); }
+        finally { await lease.DisposeAsync(); }
     }
 }

@@ -84,7 +84,7 @@ public sealed class UsageReportService(ReservationsDbContext db, TimeProvider cl
             throw new BookingException("INVALID_REPORT_RANGE", "Provide both the report start and end, or leave both empty.");
 
         // Materialize a consistent snapshot while booking mutations are excluded.
-        await gate.Semaphore.WaitAsync(cancellationToken);
+        var lease = await gate.AcquireAsync(db, cancellationToken);
         try
         {
             var now = clock.GetUtcNow();
@@ -97,6 +97,6 @@ public sealed class UsageReportService(ReservationsDbContext db, TimeProvider cl
             var reservations = await db.Reservations.AsNoTracking().ToListAsync(cancellationToken);
             return UsageReportBuilder.Build(rooms, reservations, from ?? now.AddDays(-7), to ?? now, now);
         }
-        finally { gate.Semaphore.Release(); }
+        finally { await lease.DisposeAsync(); }
     }
 }

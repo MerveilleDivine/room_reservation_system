@@ -16,6 +16,7 @@ RUN dotnet publish src/RoomReservations.Api --configuration Release --no-restore
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 ENV PORT=8080
+ENV Storage__RequireShared=true
 EXPOSE 8080
 COPY --from=api /app/ ./
 COPY --from=web /source/web/dist/ ./wwwroot/

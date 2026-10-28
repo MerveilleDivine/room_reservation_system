@@ -13,7 +13,7 @@ public sealed class ReservationService(
     public async Task<ReservationDto> SaveAsync(
         BookingRequest request, Guid? id, CancellationToken cancellationToken, Guid? submissionKey = null)
     {
-        await gate.Semaphore.WaitAsync(cancellationToken);
+        var lease = await gate.AcquireAsync(db, cancellationToken);
         try
         {
             await RequireAccessAsync(request.OrganizerId, cancellationToken);
@@ -43,15 +43,16 @@ public sealed class ReservationService(
             var reservation = await ApplyBookingAsync(request, existing, now, cancellationToken);
             AddReceipt(submissionKey, fingerprint, reservation.Id);
             await db.SaveChangesAsync(cancellationToken);
+            await lease.CommitAsync(cancellationToken);
             return reservation.ToDto(now);
         }
-        finally { gate.Semaphore.Release(); }
+        finally { await lease.DisposeAsync(); }
     }
 
     public async Task<ReservationDto> ReserveMoreAsync(
         Guid id, ContinuationRequest request, CancellationToken cancellationToken, Guid? submissionKey = null)
     {
-        await gate.Semaphore.WaitAsync(cancellationToken);
+        var lease = await gate.AcquireAsync(db, cancellationToken);
         try
         {
             var original = await FindAsync(id, cancellationToken);
@@ -67,21 +68,28 @@ public sealed class ReservationService(
             if (await db.Reservations.AnyAsync(r => r.ContinuationOfId == id && r.Status != ReservationStatus.Cancelled, cancellationToken))
                 throw new BookingException("CONTINUATION_ALREADY_BOOKED", "Extra time is already reserved. Find the additional booking to edit or cancel it.", 409);
 
+            var extra = ExtraTimePolicy.Calculate(original,
+                await db.Reservations.AsNoTracking().ToListAsync(cancellationToken), now, rules.MaximumDuration);
+            if (request.AdditionalMinutes > extra.MaximumMinutes)
+                throw new BookingException(extra.ReasonCode ?? "DURATION_EXCEEDED",
+                    extra.Message ?? "That much additional time is not available.", 409);
+
             var booking = new BookingRequest(original.RoomId, original.OrganizerId, original.Title,
                 original.EndUtc, original.EndUtc.AddMinutes(request.AdditionalMinutes), original.Attendees);
             var continuation = await ApplyBookingAsync(booking, null, now, cancellationToken);
             continuation.ContinuationOfId = id;
             AddReceipt(submissionKey, fingerprint, continuation.Id);
             await db.SaveChangesAsync(cancellationToken);
+            await lease.CommitAsync(cancellationToken);
             return continuation.ToDto(now);
         }
-        finally { gate.Semaphore.Release(); }
+        finally { await lease.DisposeAsync(); }
     }
 
     public async Task<ReservationDto> RecoverAsync(Guid submissionKey, CancellationToken cancellationToken)
     {
         // Wait for any in-flight write before looking for its receipt.
-        await gate.Semaphore.WaitAsync(cancellationToken);
+        var lease = await gate.AcquireAsync(db, cancellationToken);
         try
         {
             var receipt = await db.BookingSubmissions.FindAsync([submissionKey], cancellationToken)
@@ -90,7 +98,7 @@ public sealed class ReservationService(
             await RequireAccessAsync(reservation.OrganizerId, cancellationToken);
             return reservation.ToDto(clock.GetUtcNow());
         }
-        finally { gate.Semaphore.Release(); }
+        finally { await lease.DisposeAsync(); }
     }
 
     private async Task<Reservation> ApplyBookingAsync(
@@ -140,7 +148,7 @@ public sealed class ReservationService(
     public async Task<ReservationDto> TransitionAsync(
         Guid id, string action, CancellationToken cancellationToken)
     {
-        await gate.Semaphore.WaitAsync(cancellationToken);
+        var lease = await gate.AcquireAsync(db, cancellationToken);
         try
         {
             var reservation = await FindAsync(id, cancellationToken);
@@ -174,9 +182,10 @@ public sealed class ReservationService(
             }
 
             await db.SaveChangesAsync(cancellationToken);
+            await lease.CommitAsync(cancellationToken);
             return reservation.ToDto(now);
         }
-        finally { gate.Semaphore.Release(); }
+        finally { await lease.DisposeAsync(); }
     }
 
     private Task RequireAccessAsync(Guid organizerId, CancellationToken cancellationToken) =>

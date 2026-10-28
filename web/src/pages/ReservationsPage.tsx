@@ -41,11 +41,10 @@ export function ReservationsPage({
   onBook: () => void;
   onRefresh: () => void;
 }) {
-  const [scope, setScope] = useState<'mine' | 'workspace'>(
-    profile === 'admin' ? 'workspace' : 'mine',
-  );
+  const scope = profile === 'admin' ? 'workspace' : 'mine';
   const [view, setView] = useState<'upcoming' | 'history'>('upcoming');
   const [page, setPage] = useState(1);
+  const [focusId, setFocusId] = useState(saved?.reservation.id ?? null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [room, setRoom] = useState('');
   const [organizer, setOrganizer] = useState('');
@@ -56,10 +55,11 @@ export function ReservationsPage({
   const scheduleHeading = useRef<HTMLHeadingElement>(null);
   const query = new URLSearchParams({
     view,
-    page: String(page),
+    page: String(focusId && saved ? 1 : page),
     pageSize: String(pageSize),
   });
   if (room) query.set('roomId', room);
+  if (focusId && saved) query.set('focusId', focusId);
   if (scope === 'mine') query.set('organizerId', profile);
   else if (organizer) query.set('organizerId', organizer);
   if (status) query.set('status', status);
@@ -79,6 +79,11 @@ export function ReservationsPage({
   ].filter(Boolean).length;
 
   useEffect(() => {
+    if (feed.data && focusId && saved) {
+      setPage(feed.data.page);
+    }
+  }, [feed.data, focusId, saved]);
+  useEffect(() => {
     if (saved) confirmationHeading.current?.focus();
   }, [saved]);
   useEffect(() => {
@@ -88,10 +93,12 @@ export function ReservationsPage({
   function changeView(next: 'upcoming' | 'history') {
     setView(next);
     setStatus('');
+    setFocusId(null);
     setPage(1);
     onDismissSaved();
   }
   function clearFilters() {
+    setFocusId(null);
     setRoom('');
     setOrganizer('');
     setStatus('');
@@ -99,8 +106,7 @@ export function ReservationsPage({
     setTo('');
     setPage(1);
   }
-  const items =
-    feed.data?.items.filter((item) => item.id !== saved?.reservation.id) ?? [];
+  const items = feed.data?.items ?? [];
 
   return (
     <section aria-label="Reservation schedule">
@@ -121,12 +127,7 @@ export function ReservationsPage({
               <Icon name="close" size={16} />
             </button>
           </div>
-          <ReservationList
-            profile={profile}
-            reservations={[saved.reservation]}
-            pending={pending}
-            onAction={onAction}
-          />
+          <p>{saved.reservation.title} is in your schedule below.</p>
         </section>
       ) : null}
       <div className="schedule-toolbar">
@@ -149,37 +150,9 @@ export function ReservationsPage({
           </button>
         </div>
         <div className="schedule-tools">
-          {profile !== 'admin' ? (
-            <div
-              className="scope-control"
-              role="group"
-              aria-label="Whose reservations"
-            >
-              <button
-                aria-pressed={scope === 'mine'}
-                onClick={() => {
-                  setScope('mine');
-                  setOrganizer('');
-                  setPage(1);
-                  onDismissSaved();
-                }}
-              >
-                My bookings
-              </button>
-              <button
-                aria-pressed={scope === 'workspace'}
-                onClick={() => {
-                  setScope('workspace');
-                  setPage(1);
-                  onDismissSaved();
-                }}
-              >
-                Everyone
-              </button>
-            </div>
-          ) : (
-            <span className="scope-label">All bookings</span>
-          )}
+          <span className="scope-label">
+            {profile === 'admin' ? 'All bookings' : 'My bookings'}
+          </span>
           <button
             className="button secondary filter-toggle"
             aria-expanded={filtersOpen}
@@ -206,6 +179,7 @@ export function ReservationsPage({
               <select
                 value={room}
                 onChange={(event) => {
+                  setFocusId(null);
                   setRoom(event.target.value);
                   setPage(1);
                 }}
@@ -224,6 +198,7 @@ export function ReservationsPage({
                 <select
                   value={organizer}
                   onChange={(event) => {
+                    setFocusId(null);
                     setOrganizer(event.target.value);
                     setPage(1);
                   }}
@@ -243,6 +218,7 @@ export function ReservationsPage({
                 <select
                   value={status}
                   onChange={(event) => {
+                    setFocusId(null);
                     setStatus(event.target.value);
                     setPage(1);
                   }}
@@ -260,6 +236,7 @@ export function ReservationsPage({
                 type="datetime-local"
                 value={from}
                 onChange={(event) => {
+                  setFocusId(null);
                   setFrom(event.target.value);
                   setPage(1);
                 }}
@@ -272,6 +249,7 @@ export function ReservationsPage({
                 type="datetime-local"
                 value={to}
                 onChange={(event) => {
+                  setFocusId(null);
                   setTo(event.target.value);
                   setPage(1);
                 }}
@@ -315,10 +293,6 @@ export function ReservationsPage({
               pending={pending}
               onAction={onAction}
             />
-          ) : saved && feed.data.totalCount > 0 ? (
-            <p className="quiet-message">
-              Your confirmed booking is shown above.
-            </p>
           ) : (
             <div className="schedule-empty">
               <span className="empty-icon">
@@ -363,6 +337,7 @@ export function ReservationsPage({
                   className="button secondary"
                   disabled={page <= 1}
                   onClick={() => {
+                    setFocusId(null);
                     setPage((value) => value - 1);
                     scheduleHeading.current?.focus();
                   }}
@@ -373,6 +348,7 @@ export function ReservationsPage({
                   className="button secondary"
                   disabled={page >= totalPages}
                   onClick={() => {
+                    setFocusId(null);
                     setPage((value) => value + 1);
                     scheduleHeading.current?.focus();
                   }}

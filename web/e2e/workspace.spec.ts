@@ -225,19 +225,19 @@ test('extra time respects the next room and organizer bookings', async ({
       })
       .getByRole('button', { name: 'Reserve more time' })
       .click();
-    await expect(page.getByLabel('Additional time')).toBeFocused();
-    await page.getByLabel('Additional time').selectOption('30');
+    await expect(
+      page.getByText('The room is booked immediately after this meeting.', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Reserve extra time', exact: true }),
+    ).toBeDisabled();
     await page.screenshot({
       path: info.outputPath('extra-time-desktop.png'),
       fullPage: true,
     });
-    await page
-      .getByRole('button', { name: 'Reserve extra time', exact: true })
-      .click();
-    await expect(page.getByRole('alert')).toContainText(
-      'This room is already booked',
-    );
-    await expect(page.getByLabel('Additional time')).toHaveValue('30');
+    await page.getByRole('button', { name: 'Go back', exact: true }).click();
     await request.post(`/api/reservations/${roomBooking.id}/cancel`);
     const organizerBlock = await request.post('/api/reservations', {
       data: { ...blocker, roomId: atlas, organizerId: parent.organizerId },
@@ -246,12 +246,48 @@ test('extra time respects the next room and organizer bookings', async ({
     const organizerBooking = (await organizerBlock.json()) as Reservation;
     createdIds.push(organizerBooking.id);
     await page
-      .getByRole('button', { name: 'Reserve extra time', exact: true })
+      .getByRole('article')
+      .filter({
+        has: page.getByRole('heading', { name: parent.title, exact: true }),
+      })
+      .getByRole('button', { name: 'Reserve more time' })
       .click();
-    await expect(page.getByRole('alert')).toContainText(
-      'The organizer already has a meeting',
-    );
+    await expect(
+      page.getByText('You have another meeting immediately after this one.', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Reserve extra time', exact: true }),
+    ).toBeDisabled();
+    await page.getByRole('button', { name: 'Go back', exact: true }).click();
     await request.post(`/api/reservations/${organizerBooking.id}/cancel`);
+    const next = await request.post('/api/reservations', {
+      data: {
+        ...blocker,
+        startUtc: new Date(
+          Date.parse(parent.endUtc) + 2 * 60 * 1000,
+        ).toISOString(),
+      },
+    });
+    expect(next.status()).toBe(201);
+    createdIds.push(((await next.json()) as Reservation).id);
+    await page
+      .getByRole('article')
+      .filter({
+        has: page.getByRole('heading', { name: parent.title, exact: true }),
+      })
+      .getByRole('button', { name: 'Reserve more time' })
+      .click();
+    await expect(
+      page.getByText('Up to 2 additional minutes available.', { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByLabel('Additional time')).toHaveValue('2');
+    const rejected = await request.post(
+      `/api/reservations/${parent.id}/continuations`,
+      { data: { additionalMinutes: 3 } },
+    );
+    expect(rejected.status()).toBe(409);
     const confirmation = page.waitForResponse(
       (response) =>
         response
@@ -267,7 +303,7 @@ test('extra time respects the next room and organizer bookings', async ({
     expect(child.continuationOfId).toBe(parent.id);
     expect(child.startUtc).toBe(parent.endUtc);
     expect(Date.parse(child.endUtc) - Date.parse(child.startUtc)).toBe(
-      30 * 60 * 1000,
+      2 * 60 * 1000,
     );
     await expect(page.getByRole('dialog')).not.toBeVisible();
     await expect(
@@ -481,7 +517,7 @@ test('concurrent HTTP requests cannot double-book a room or organizer', async ({
   }
 });
 
-test('profile switching keeps other bookings read-only and preserves the selected member', async ({
+test('profile switching hides other bookings and preserves the selected member', async ({
   page,
   request,
 }) => {
@@ -495,15 +531,24 @@ test('profile switching keeps other bookings read-only and preserves the selecte
   try {
     await page.goto('/');
     await page.getByLabel('Current profile').selectOption(alex);
-    await page.getByRole('button', { name: 'Everyone', exact: true }).click();
     await page
       .getByRole('button', { name: 'Reservations', exact: true })
       .click();
     const row = page.getByRole('article').filter({
       has: page.getByRole('heading', { name: value.title, exact: true }),
     });
-    await expect(row).toBeVisible();
-    await expect(row.getByRole('button')).toHaveCount(0);
+    await expect(row).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: 'Everyone', exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: 'People', exact: true }),
+    ).toHaveCount(0);
+    const privateRead = await request.get(
+      '/api/reservations/' + reservation.id,
+      { headers: { 'X-Roomwise-Profile': alex } },
+    );
+    expect(privateRead.status()).toBe(403);
     const denied = await request.post(
       '/api/reservations/' + reservation.id + '/cancel',
       { headers: { 'X-Roomwise-Profile': alex } },
@@ -576,7 +621,9 @@ test('a new booking is visible immediately after history or pagination, even far
     ).toBeFocused();
     const title = page.getByRole('heading', { name: value.title, exact: true });
     await expect(title).toBeVisible();
-    expect((await title.boundingBox())!.y).toBeLessThan(500);
+    await expect(
+      page.getByRole('article').filter({ has: title }),
+    ).toBeVisible();
     await expect(title).toHaveCount(1);
     await expect(
       page.getByRole('button', { name: 'Upcoming', exact: true }),

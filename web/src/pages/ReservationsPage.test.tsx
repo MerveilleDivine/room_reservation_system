@@ -71,10 +71,10 @@ describe('reservation schedule', () => {
       'aria-pressed',
       'true',
     );
-    expect(screen.getByRole('button', { name: 'My bookings' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    expect(screen.getByText('My bookings')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Everyone' }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'History' })).toHaveAttribute(
       'aria-pressed',
       'false',
@@ -139,7 +139,7 @@ describe('reservation schedule', () => {
       .fn()
       .mockImplementation(() => Promise.resolve(response(envelope([]))));
     vi.stubGlobal('fetch', fetchMock);
-    renderSchedule();
+    renderSchedule({ profile: 'admin' });
     const user = userEvent.setup();
     await screen.findByRole('heading', {
       name: 'A little room in your schedule.',
@@ -149,7 +149,6 @@ describe('reservation schedule', () => {
     expect(
       screen.queryByLabelText('Room', { exact: true }),
     ).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Everyone' }));
     await user.click(screen.getByRole('button', { name: 'History' }));
     await user.click(toggle);
     await user.selectOptions(
@@ -201,10 +200,7 @@ describe('reservation schedule', () => {
         pageSize: '6',
       }),
     );
-    expect(screen.getByRole('button', { name: 'Everyone' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    expect(screen.getByText('All bookings')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'History' })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -215,7 +211,7 @@ describe('reservation schedule', () => {
     );
   });
 
-  it('puts a newly saved late-date booking above the feed, focuses its confirmation and avoids a duplicate row', async () => {
+  it('keeps a newly saved booking in the chronological feed and focuses its confirmation without a duplicate row', async () => {
     const late: Reservation = {
       ...reservation,
       id: 'late',
@@ -250,11 +246,13 @@ describe('reservation schedule', () => {
     const articles = screen.getAllByRole('article');
     expect(
       within(articles[0]!).getByRole('heading', {
-        name: 'Next month planning',
+        name: 'Tomorrow stand-up',
       }),
     ).toBeInTheDocument();
     expect(
-      within(articles[1]!).getByRole('heading', { name: 'Tomorrow stand-up' }),
+      within(articles[1]!).getByRole('heading', {
+        name: 'Next month planning',
+      }),
     ).toBeInTheDocument();
     await userEvent
       .setup()
@@ -264,7 +262,32 @@ describe('reservation schedule', () => {
     expect(props.onDismissSaved).toHaveBeenCalledOnce();
   });
 
-  it('does not show the previous query while a different scope is loading and renders the current response', async () => {
+  it('opens the page containing a saved booking, then lets the person navigate normally', async () => {
+    const fetchMock = vi.fn().mockImplementation((path: string) => {
+      const query = new URL(path, 'http://localhost').searchParams;
+      return Promise.resolve(
+        response(
+          query.has('focusId')
+            ? envelope([reservation], 2, 8)
+            : envelope([], 1, 8),
+        ),
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderSchedule({ saved: { reservation, label: 'You’re booked' } });
+    await screen.findByRole('heading', { name: 'Planning' });
+    await screen.findByText('Page 2 of 2');
+    expect(latestQuery(fetchMock).get('focusId')).toBe(reservation.id);
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Previous' }));
+    await waitFor(() =>
+      expect(latestQuery(fetchMock).has('focusId')).toBe(false),
+    );
+    expect(latestQuery(fetchMock).get('page')).toBe('1');
+  });
+
+  it('does not show the previous query while history is loading and keeps the personal scope', async () => {
     let finishWorkspace!: (value: Response) => void;
     const workspaceResponse = new Promise<Response>((resolve) => {
       finishWorkspace = resolve;
@@ -278,14 +301,15 @@ describe('reservation schedule', () => {
     await screen.findByRole('heading', { name: 'Planning' });
     await userEvent
       .setup()
-      .click(screen.getByRole('button', { name: 'Everyone' }));
+      .click(screen.getByRole('button', { name: 'History' }));
     expect(
       screen.queryByRole('heading', { name: 'Planning' }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent(
       'Loading your schedule',
     );
-    expect(latestQuery(fetchMock).has('organizerId')).toBe(false);
+    expect(latestQuery(fetchMock).get('organizerId')).toBe(memberId);
+    expect(latestQuery(fetchMock).get('view')).toBe('history');
     const workspace = {
       ...reservation,
       id: 'workspace',

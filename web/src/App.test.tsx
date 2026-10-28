@@ -102,6 +102,13 @@ describe('workspace', () => {
     expect(
       screen.queryByRole('button', { name: 'Check in' }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'People' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Usage' }),
+    ).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Current profile'), 'admin');
     await user.click(screen.getByRole('button', { name: 'People' }));
     expect(
       await screen.findByRole('heading', { name: 'Alex Morgan' }),

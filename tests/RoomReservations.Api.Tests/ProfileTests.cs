@@ -22,13 +22,13 @@ public sealed class ProfileTests
     [InlineData(null)]
     [InlineData("unknown")]
     [InlineData("20000000-0000-0000-0000-000000000099")]
-    public async Task Missing_or_invalid_profile_cannot_write(string? profile)
+    public async Task Missing_or_invalid_profile_cannot_read_private_bookings_or_write(string? profile)
     {
         await using var factory = new TestApplication();
         using var client = factory.CreateClient();
         Select(client, profile);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/reservations", Booking(Alex))).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/reservations")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/reservations")).StatusCode);
     }
 
     [Fact]

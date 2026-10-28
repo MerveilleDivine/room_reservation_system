@@ -37,6 +37,31 @@ jobs:
       - run: npm ci
       - run: npm run check
 
+  shared-storage:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: roomwise-ci-only
+          POSTGRES_DB: roomwise_checks
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ROOMWISE_POSTGRES_TEST_CONNECTION: Host=localhost;Port=5432;Database=roomwise_checks;Username=postgres;Password=roomwise-ci-only
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet test RoomReservations.slnx --configuration Release --filter Category=Postgres
+
   browser:
     needs: [backend, frontend]
     runs-on: ubuntu-latest
@@ -98,7 +123,7 @@ jobs:
       - run: npm ci
         working-directory: web
       - name: Start the published app
-        run: docker run --detach --rm --name roomwise --publish 127.0.0.1:8080:8080 roomwise:ci
+        run: docker run --detach --rm --name roomwise --env Storage__RequireShared=false --publish 127.0.0.1:8080:8080 roomwise:ci
       - name: Wait for the real API
         run: curl --fail --retry 30 --retry-connrefused --retry-all-errors --retry-delay 1 --max-time 5 http://127.0.0.1:8080/api/health
       - name: Verify the single-host app in Chromium

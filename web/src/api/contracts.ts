@@ -68,6 +68,15 @@ export interface BookingPolicy {
   maximumAdvanceDays: number;
 }
 
+export interface ExtraTimeAvailability {
+  maximumMinutes: number;
+  startsAtUtc: string;
+  blockedFromUtc: string | null;
+  blockedUntilUtc: string | null;
+  reasonCode: string | null;
+  message: string | null;
+}
+
 export interface RoomUsage {
   roomId: string;
   roomName: string;

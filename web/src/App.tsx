@@ -197,22 +197,27 @@ export function App() {
             <span>Roomwise</span>
           </a>
           <nav aria-label="Main navigation">
-            {(Object.keys(pages) as Page[]).map((item) => (
-              <button
-                key={item}
-                className={page === item ? 'nav-item selected' : 'nav-item'}
-                aria-current={page === item ? 'page' : undefined}
-                onClick={() => {
-                  setPage(item);
-                  setSaved(null);
-                  window.scrollTo({ top: 0 });
-                  setNotice('');
-                  setActionError(null);
-                }}
-              >
-                <span>{pages[item].label}</span>
-              </button>
-            ))}
+            {(Object.keys(pages) as Page[])
+              .filter(
+                (item) =>
+                  profile === 'admin' || (item !== 'users' && item !== 'usage'),
+              )
+              .map((item) => (
+                <button
+                  key={item}
+                  className={page === item ? 'nav-item selected' : 'nav-item'}
+                  aria-current={page === item ? 'page' : undefined}
+                  onClick={() => {
+                    setPage(item);
+                    setSaved(null);
+                    window.scrollTo({ top: 0 });
+                    setNotice('');
+                    setActionError(null);
+                  }}
+                >
+                  <span>{pages[item].label}</span>
+                </button>
+              ))}
           </nav>
           <div className="header-actions">
             <label className="profile-switcher">
