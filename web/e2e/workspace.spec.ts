@@ -639,7 +639,9 @@ test('a new booking is visible immediately after history or pagination, even far
       page.getByRole('heading', { name: 'Roadmap review', exact: true }),
     ).toHaveCount(0);
     await page.getByRole('button', { name: 'Filters', exact: true }).click();
-    await page.getByLabel('Room', { exact: true }).selectOption(birch);
+    await page
+      .getByRole('combobox', { name: 'Room', exact: true })
+      .selectOption(birch);
     await expect(
       page.getByRole('heading', { name: 'You’re booked', exact: true }),
     ).toHaveCount(0);

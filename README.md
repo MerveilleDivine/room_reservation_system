@@ -8,7 +8,7 @@ Roomwise handles the scheduling side of that problem: find a room, make a reserv
 
 I built Roomwise for an internship technical assignment using ASP.NET Core, EF Core InMemory, React and TypeScript.
 
-[Try Roomwise](https://roomwise-reservations.vercel.app/) · [Architecture](docs/architecture.md) · [API](docs/api.md) · [Verification](docs/verification.md)
+[Run locally](#run-it-locally) · [Architecture](docs/architecture.md) · [API](docs/api.md) · [Verification](docs/verification.md)
 
 No account needed. Choose a profile in the header and start with what’s next.
 
