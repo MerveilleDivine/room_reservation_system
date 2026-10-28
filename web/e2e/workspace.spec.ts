@@ -125,11 +125,9 @@ test('a six-person meeting can choose the suggested six-seat room and keeps its 
     expect(Date.parse(saved.startUtc)).toBe(Date.parse(value.startUtc));
     expect(Date.parse(saved.endUtc)).toBe(Date.parse(value.endUtc));
     await page.reload();
-    const row = page
-      .getByRole('article')
-      .filter({
-        has: page.getByRole('heading', { name: value.title, exact: true }),
-      });
+    const row = page.getByRole('article').filter({
+      has: page.getByRole('heading', { name: value.title, exact: true }),
+    });
     await expect(row).toContainText('Birch');
     await expect(row).toContainText('6 people');
   } finally {
