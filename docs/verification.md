@@ -1,6 +1,21 @@
 # Verification record
 
-## Current reliability fix
+## Smaller-room suggestions
+
+[Checks run 40676774036](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/40676774036) passed for application and test source `2743feb48c37af4d75e858087ca893b8c480ecd3` on 28 October 2026:
+
+| Check | Result |
+| --- | --- |
+| Backend Release tests | 136 passed, no skips |
+| Frontend | TypeScript, production build, 50 tests and formatting passed |
+| Development browser | All 14 Chromium scenarios passed |
+| Published container browser | All 14 Chromium scenarios passed |
+
+Coverage includes six people in a twelve-seat room, similarity and explicit equipment requirements, partial room overlaps, organizer conflicts, inactive/undersized alternatives, editing exclusions and member access. A competing booking after the suggestion is rejected at save. UI checks confirm that accepting changes only the room, ignoring keeps the selected room, obsolete suggestions disappear and failed optional lookups do not block booking. Real browser checks save the suggested room, verify times and attendee count after reload, and exercise the mobile suggestion layout.
+
+Render deployment `dep-dbgtdcafngtc73b6ol6g` reached `live` on 28 October 2026 for this source. Live checks confirmed health, the six-seat Birch suggestion for six people in Atlas, equipment differences, no undersized suggestion for seven people, and retention of an explicit video-conferencing requirement. The live browser accepted Birch, saved the meeting and showed the same room, six attendees and selected interval after reload. The isolated synthetic booking was cancelled afterward.
+
+## Reliability release
 
 The app retains ASP.NET Core, EF Core InMemory and React. The external database proposal has been removed. Hosting now requires one API process, as configured in `render.yaml`, rather than independently scaled in-memory replicas.
 

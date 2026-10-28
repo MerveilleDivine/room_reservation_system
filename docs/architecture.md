@@ -115,3 +115,9 @@ A successful mutation returns the committed DTO for a short confirmation above t
 `RoomAvailabilityService` evaluates a chosen interval against the same time and overlap policies as booking writes. The room finder carries its checked room and interval into the form. Every search, including unchanged dates, requests a fresh snapshot. Changing draft dates disables booking until searched. An unavailable lookup is not shown as proof that a room is booked. The write gate still revalidates conflicts when the booking is saved.
 
 See [product-design.md](product-design.md) for the researched workflows, information hierarchy and acceptance criteria.
+
+## ADR 13: optional smaller-room suggestions
+
+The existing availability service reuses booking rules to suggest at most one smaller active room for the complete interval and attendee count. It preserves explicit equipment requirements, prefers similar equipment, then smaller capacity and the same floor. Differences from the selected room are returned separately so the user can make an informed choice. An edit can exclude its existing booking only after an ownership check. No reservation details or other organizers are returned.
+
+React waits 250 ms after changes to the relevant fields, cancels obsolete lookups and immediately hides a suggestion belonging to an older selection. Choosing a suggestion changes only the room; ignoring it keeps the original choice. A failed optional lookup does not block normal booking. Suggestions neither hold nor create reservations, and saving rechecks conflicts under the existing write gate. This adds no polling, state-management dependency or infrastructure service.
