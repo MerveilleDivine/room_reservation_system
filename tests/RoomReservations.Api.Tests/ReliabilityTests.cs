@@ -50,6 +50,22 @@ public sealed class ReliabilityTests
     }
 
     [Fact]
+    public async Task Extra_time_never_rounds_a_partial_minute_into_the_next_booking()
+    {
+        await using var app = new TestApplication();
+        using var client = app.CreateClient();
+        var parent = (await client.GetFromJsonAsync<ReservationDto[]>("/api/reservations"))!
+            .Single(r => r.Title == "Engineering sync");
+        var block = new BookingRequest(parent.RoomId, Guid.Parse(Alex), "Private next meeting",
+            parent.EndUtc.AddMinutes(2).AddTicks(-1), parent.EndUtc.AddHours(1), 1);
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/reservations", block)).StatusCode);
+        var extra = (await client.GetFromJsonAsync<ExtraTimeDto>($"/api/reservations/{parent.Id}/extra-time"))!;
+        Assert.Equal(1, extra.MaximumMinutes);
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync($"/api/reservations/{parent.Id}/continuations",
+            new { additionalMinutes = 2 })).StatusCode);
+    }
+
+    [Fact]
     public async Task Saved_booking_focus_resolves_to_its_actual_schedule_page()
     {
         await using var app = new TestApplication();

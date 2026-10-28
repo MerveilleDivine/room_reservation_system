@@ -30,6 +30,10 @@ Selectable member and administrator profiles add ownership to booking workflows 
 
 The full CI run for `359f641` passed backend tests, 32 frontend tests, and all nine browser scenarios against development servers and the published container. See [verification.md](verification.md).
 
+## Reliability update, 28 October 2026
+
+The hosted InMemory store allowed different requests to reach different reservations. Optional shared PostgreSQL storage and a cross-server transaction lock now address that boundary. Seed IDs are stable. A saved reservation remains in Upcoming at its chronological page. Member detail reads are scoped on the API, and the extra-time form displays and enforces the exact gap, including two minutes or none. Independent-host PostgreSQL tests run in CI. Deployment remains blocked until a shared store is configured; the account has reached its Supabase free-project limit.
+
 ## Follow-up work
 
 1. Verify setup from a fresh Windows checkout with the README commands.
@@ -39,4 +43,4 @@ The full CI run for `359f641` passed backend tests, 32 frontend tests, and all n
 
 ## Deliberate scope
 
-Room/user administration, authentication, billing, external calendars, notifications and production operations are outside the assignment's current scope. A disposable hosted preview is provided for review. InMemory remains the required storage provider. The report uses manual check-in, not inferred physical occupancy, and does not invent office-hours utilization.
+Room/user administration, authentication, billing, external calendars, notifications and production operations are outside the assignment's current scope. A public demo uses synthetic data. InMemory remains the required local provider; hosted containers now require a separately configured shared PostgreSQL store. A new hosted store is not yet provisioned. The report uses manual check-in, not inferred physical occupancy, and does not invent office-hours utilization.

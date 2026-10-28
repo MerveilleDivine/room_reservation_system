@@ -25,7 +25,7 @@ The interaction model draws on publicly documented workflows rather than copying
 | Keep my context                   | Member organizer filled automatically; searched room/time carried into the form | Revalidate ownership and all booking rules on save                         |
 | Show more detail only when useful | Collapsed advanced filters and room identifiers                                 | Preserve required identifiers in the contract                              |
 
-A new booking is temporarily highlighted above the chronological schedule. It does not permanently push tomorrow's meeting below a booking next month. Changing scope, period, profile or manually refreshing clears the highlight. Successful cancellation or early completion removes the booking from Upcoming; History retains it.
+A short confirmation appears above the chronological schedule. The newly saved booking remains in the list, and the server opens its actual page, even when its date is weeks away. Changing scope, period, profile or manually refreshing clears the highlight. Successful cancellation or early completion removes the booking from Upcoming; History retains it.
 
 ## Frontend behavior
 
@@ -39,4 +39,6 @@ A new booking is temporarily highlighted above the chronological schedule. It do
 
 ## Boundaries
 
-Availability is a snapshot, not a temporary hold. Saving repeats validation under the write gate. Selectable sample profiles continue to model ownership without account authentication. Storage remains EF Core InMemory as required by the assignment.
+Availability is a snapshot, not a temporary hold. Saving repeats validation under the write gate. Selectable sample profiles continue to model ownership without account authentication. Local storage remains EF Core InMemory as required by the assignment. Hosted storage requires PostgreSQL so independent servers share bookings. Member reads return only that member's details; administrator views remain available through the synthetic profile model.
+
+The extra-time dialog shows the exact available whole-minute gap and anonymous blocking interval. It disables submission when no gap remains and rechecks after a conflicting save. The backend repeats validation inside the write transaction.

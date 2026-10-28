@@ -23,7 +23,8 @@ public static class SeedData
         db.Rooms.AddRange(rooms);
         db.People.AddRange(people);
 
-        var now = clock.GetUtcNow();
+        // UI inputs use whole minutes; do not seed hidden sub-millisecond boundaries.
+        var now = DateTimeOffset.FromUnixTimeSeconds(clock.GetUtcNow().ToUnixTimeSeconds() / 60 * 60);
         var tomorrow = new DateTimeOffset(now.UtcDateTime.Date.AddDays(1).AddHours(9), TimeSpan.Zero);
         var yesterday = tomorrow.AddDays(-2);
         db.Reservations.AddRange(

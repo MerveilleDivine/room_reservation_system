@@ -20,7 +20,9 @@ These are folders within one API project, not separate deployable services. Extr
 
 **Consequences:** this is not a relational database or a production persistence strategy. Referential checks are explicit. A singleton write gate protects validation plus save only within this one API process. InMemory does not supply the relational guarantees needed for multiple deployed instances.
 
-**Production direction, not implemented:** move to a relational provider, enforce required relationships, implement a database-backed concurrency/overlap strategy and integration-test it against that real provider. The process-local semaphore does not protect writes across instances.
+**Hosted provider:** setting `ConnectionStrings__Reservations` selects Npgsql/PostgreSQL. The container requires this shared store. Every booking write takes a transaction-level advisory lock scoped to `current_schema()`, then validates and saves at Read Committed isolation. Independent processes therefore see the previous committed write before checking overlaps. Bookings and idempotency receipts commit together. The process semaphore still protects InMemory and limits concurrent database operations per host.
+
+The broad schema lock trades throughput for a small, auditable conflict mechanism that covers room and organizer conflicts together. A larger deployment should use finer-grained locking or relational exclusion constraints with explicit load testing. CI starts independent API hosts against a real PostgreSQL service to verify edits, persistence, recovery and concurrent rejection. An isolated schema is initialized once under the lock; schema evolution requires migrations rather than changing an existing live model with this bootstrap.
 
 Reference: [Microsoft EF Core InMemory guidance](https://learn.microsoft.com/en-us/ef/core/providers/in-memory/).
 
@@ -96,9 +98,9 @@ The browser recovery test forwards a POST to the actual ASP.NET API, lets it com
 
 ## ADR 11: selectable profiles and reservation ownership
 
-A small header selector switches between the seeded people and Administrator. Members can view all reservations but create only for themselves and manage only their own bookings. Administrator can manage every organizer. The selected profile is stored per tab in session storage, with an in-memory fallback if storage is unavailable.
+A small header selector switches between the seeded people and Administrator. Members can read, create and manage only their own reservations. Administrator can manage every organizer. The selected profile is stored per tab in session storage, with an in-memory fallback if storage is unavailable.
 
-The browser includes `X-Roomwise-Profile` on API requests. `BookingProfile` checks the selected person against the existing in-memory people, while `ReservationService` checks ownership under its write gate. Edits check both the existing owner and requested organizer, preventing reassignment as a workaround. Request recovery and replay check the reservation's current owner. Missing or invalid profiles cannot make changes.
+The browser includes `X-Roomwise-Profile` on API requests. `BookingProfile` checks the selected person against the existing in-memory people, while `ReservationService` checks ownership under its write gate. Edits check both the existing owner and requested organizer, preventing reassignment as a workaround. Request recovery and replay check the reservation's current owner. Missing or invalid profiles cannot read private booking details or make changes. Reservation list, feed and detail endpoints enforce the selected member. Usage and aggregate booking counts are limited to Administrator.
 
 These are deliberately selectable sample profiles, not authenticated accounts. The header is user-controlled; production authorization would require a verified identity and trusted role assignments. Those distinctions belong in the engineering documentation rather than repeated notices in the interface.
 
@@ -108,7 +110,7 @@ React derives action visibility from the selected profile and the API's lifecycl
 
 The personal upcoming schedule is the application entry point. `ReservationFeedService` provides explicit upcoming/history views, stable sorting, organizer/room/status/date filtering and bounded pagination in one read snapshot. The existing unpaginated reservations endpoint keeps its array contract for integrations and tests. Upcoming includes ongoing Booked reservations; naturally completed and cancelled records appear only in History.
 
-A successful mutation returns the committed DTO to a temporary confirmation card above the feed. This gives immediate visibility without making future planning use creation order. Saving resets irrelevant filters and pagination; switching profiles or views clears confirmation state. The API hook cancels superseded requests and hides data belonging to an old query while a new one loads.
+A successful mutation returns the committed DTO for a short confirmation above the feed. The booking stays in the canonical chronological list; `focusId` resolves its actual page instead of removing the row or creating a separate editable copy. Saving resets irrelevant filters; switching profiles or views clears confirmation state. The API hook cancels superseded requests and hides data belonging to an old query while a new one loads.
 
 `RoomAvailabilityService` evaluates a chosen interval against the same time and overlap policies as booking writes. The room finder carries its checked room and interval into the form. Every search, including unchanged dates, requests a fresh snapshot. Changing draft dates disables booking until searched. An unavailable lookup is not shown as proof that a room is booked. The write gate still revalidates conflicts when the booking is saved.
 

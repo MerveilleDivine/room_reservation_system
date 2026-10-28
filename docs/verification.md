@@ -1,4 +1,13 @@
-# Verification record
+# Verification
+
+## Reliability work, 28 October 2026
+
+The previous one-process checks did not establish consistency across hosted instances. User reports exposed missing seeded IDs, saved bookings absent on later requests and insufficient privacy. The fix is being reviewed in [PR 1](https://github.com/MerveilleDivine/room_reservation_system/pull/1).
+
+At `02068bc`, 122 backend checks, 44 frontend checks and all three independent-host PostgreSQL checks passed. Ten of eleven browser scenarios passed in both setups. The extra-time browser check exposed sub-millisecond seed timestamps crossing the JavaScript Date boundary; seeds now align to whole minutes. A separate regression verifies that a genuinely partial minute is rounded down and cannot overlap another booking. Final CI results are recorded below once complete.
+
+The public site still runs the older revision until a shared database is provisioned. Supabase refused a new free project because the account has reached its active-project limit. No existing app database has been modified. The hosted fix is not yet verified or submission-ready. Selectable demo profiles model read scope but do not authenticate users or protect real private data.
+ record
 
 Latest full verification: 26 October 2026.
 

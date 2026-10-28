@@ -17,20 +17,20 @@ No account needed. Choose a profile in the header and start with what’s next.
 1. Choose a profile. Your personal upcoming reservations open first, with a greeting. Administrator sees the workspace schedule.
 2. Open Rooms, choose a start and end time, and find a space. The compact room grid shows availability for that interval. Capacity, floor and equipment filters are there when needed.
 3. Book a room. Your selected room and time carry into the form, and your organizer is filled in for a member profile.
-4. Your confirmed reservation appears at the top immediately, even if it is weeks away. The rest of the schedule stays in chronological order.
-5. Use My bookings / Everyone to change scope, and open History only when you want past or cancelled meetings. Results are paginated six at a time.
+4. Your confirmed reservation appears in Upcoming. The app opens its page, even if it is weeks away, and keeps the schedule in chronological order.
+5. Open History for past or cancelled meetings. Members see their own bookings; Administrator can filter the workspace schedule. Results are paginated six at a time.
 6. Edit or cancel an upcoming booking. For a meeting in progress, check in, reserve more time or end early. Actions follow the selected profile and the meeting's current state.
-7. Open People or Usage for organizer counts and room activity.
+7. As Administrator, open People or Usage for organizer counts and room activity.
 
 Times use your device's timezone and are sent to the API as UTC instants. Room availability is a snapshot; saving repeats all conflict checks. Extra time is a separate linked booking and must fit the room and organizer schedules.
 
-The demo uses synthetic in-memory data. Restarting the server resets it. Seeded dates are relative to startup, so the ongoing example eventually ends.
+Local development uses synthetic in-memory data, which resets on restart. Shared hosted storage is configured separately; seed data is inserted only into an empty store and has stable IDs. The ongoing example eventually ends.
 
 [Read the product design and research](docs/product-design.md) for the reasoning behind the flow.
 
 ## Who can change a booking?
 
-Everyone can browse rooms, people, reservations and usage. A selected member can create bookings for themselves and manage their own reservations. Administrator can create and manage bookings for any organizer.
+Members can browse room availability, read their own booking details, and create and manage their own reservations. Administrator can read and manage every organizer's reservations and view People and Usage. List, feed, individual lookup and recovery enforce the selected profile on the server.
 
 The selection stays in session storage for the current browser tab. Switching profiles closes open forms. The API checks ownership inside the same write gate used for booking validation, including edits, cancellations, check-in, early completion, extra time and confirmation recovery.
 
@@ -42,15 +42,19 @@ Getting a booking onto a screen is one part of the work. Deciding what happens w
 
 ### Two people want the same slot
 
-Booking writes share a single-process gate. Validation and saving happen inside that gate, so simultaneous requests cannot both pass a conflict check for the same slot.
+InMemory writes share a single-process gate. With PostgreSQL, validation and saving also hold a transaction-level advisory lock shared by every server using the same schema. The second request checks the first request's committed result before saving.
 
-That guarantee matches the assignment's in-memory storage model. A deployment with multiple instances would need shared persistent storage and database-level conflict protection.
+The broad database lock is deliberate for this small demo: easy to audit, with lower write throughput than per-resource locks or database exclusion constraints. It protects organizer conflicts across different rooms as well as room conflicts.
 
 ### The booking saved. The response disappeared.
 
 Create, edit and additional-time requests carry a request identifier. The server stores a receipt so the client can recover the confirmation instead of immediately creating another booking.
 
-Receipts last for the current server process. They do not survive a restart, and lifecycle actions such as cancellation do not use this recovery mechanism.
+InMemory receipts last for the current server process. PostgreSQL receipts commit in the same transaction as bookings and survive server replacement. Lifecycle actions such as cancellation do not use this recovery mechanism.
+
+### A meeting needs two more minutes
+
+The extra-time form asks the server for the exact free gap before the next room or organizer booking. A two-minute gap allows two minutes; an adjacent booking allows none. It shows the blocking interval without the next meeting's title or organizer. Saving rechecks the gap under the write transaction because availability is a snapshot rather than a hold.
 
 ### A booked room is not proof of a used room
 
@@ -164,7 +168,7 @@ Playwright starts the real API and frontend with fresh seed data. The browser sc
 
 GitHub Actions checks both the two-server development setup and the published container.
 
-The current verified source passes 117 backend tests, 40 frontend tests and all 11 Chromium scenarios in each server setup. See the [verification record](docs/verification.md) for the source revision, run links and environment limits.
+See the [verification record](docs/verification.md) for source revisions, test counts, run links and environment limits. CI also runs independent API hosts against real PostgreSQL to check cross-server editing, restart persistence, receipt recovery and competing writes.
 
 ## Change the booking policy
 
@@ -187,16 +191,18 @@ A day here means 24 elapsed hours. An explicit office timezone and a policy for 
 
 ```powershell
 docker build --file Dockerfile.vercel --tag roomwise .
-docker run --rm --publish 8080:8080 roomwise
+docker run --rm --env Storage__RequireShared=false --publish 8080:8080 roomwise
 ```
 
 Open [http://localhost:8080](http://localhost:8080).
 
-The container builds React and publishes ASP.NET into one non-root image. ASP.NET serves the frontend and API from the same origin. The hosted demo uses this same ASP.NET and EF Core InMemory implementation.
+The container builds React and publishes ASP.NET into one non-root image. ASP.NET serves the frontend and API from the same origin. Containers require shared storage by default. The explicit override above runs a disposable single-process InMemory demo locally.
 
 `vercel.json` routes requests to the container service. The hosted configuration uses `PORT=8080` and `AllowedHosts=localhost;127.0.0.1;*.vercel.app`.
 
-In-memory data belongs to one running process. Restarts, idle shutdowns and separate instances have separate data. This is a public assignment demo, so use sample information.
+For hosted use, set the server-only `ConnectionStrings__Reservations` secret to a PostgreSQL connection string. Use an isolated database or schema, an application-specific role and separate production/preview stores. The role needs schema/table creation for initial bootstrap. Tables are created and seeded once under the shared transaction lock. This bootstrap does not upgrade an existing schema; future model changes require a reviewed migration.
+
+The assignment's default provider remains EF Core InMemory when running directly without a connection string. A hosted container refuses to start without shared storage. Do not disable that check on a distributed deployment. Use synthetic data because selectable profiles do not authenticate users.
 
 To target an already running disposable instance with browser tests, set `PLAYWRIGHT_BASE_URL`. The suite changes booking data and expects fresh seeds.
 
@@ -204,7 +210,7 @@ To target an already running disposable instance with browser tests, set `PLAYWR
 
 Calendar/timeline views and PDF export are optional features from the brief and are not implemented.
 
-For a real shared office deployment, the next work would include persistent storage, database-backed concurrency protection, authentication and an explicit office timezone policy. Those changes would need requirements beyond this assignment.
+For real office use, the next work includes authenticated identities and trusted role assignment, schema migrations, capacity planning and an explicit office timezone policy. Selectable demo profiles do not protect private real-world bookings.
 
 ## A little more detail
 
