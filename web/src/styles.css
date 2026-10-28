@@ -839,6 +839,28 @@ legend {
 .booking-dialog .short-input {
   max-width: 110px;
 }
+.room-suggestion {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #f1f4eb;
+}
+.room-suggestion h3 {
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.room-suggestion p {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.room-suggestion .form-note {
+  margin-top: 6px;
+  font-size: 12px;
+}
 .dialog-actions {
   display: flex;
   justify-content: flex-end;

@@ -71,6 +71,125 @@ async function localSlot(
   );
 }
 
+test('a six-person meeting can choose the suggested six-seat room and keeps its details after reload', async ({
+  page,
+  request,
+}, info) => {
+  let createdId: string | undefined;
+  try {
+    await page.goto('/');
+    await page
+      .getByRole('button', { name: 'New reservation', exact: true })
+      .click();
+    const value = {
+      ...booking(45),
+      title: 'Right-sized browser meeting',
+      attendees: 6,
+    };
+    await fillBooking(page, value);
+    const suggestion = page.getByRole('complementary', {
+      name: 'Smaller room suggestion',
+    });
+    await expect(suggestion).toContainText('Birch seats 6');
+    await expect(suggestion).toContainText('TV screen, Video conferencing');
+    await expect(
+      page
+        .getByRole('dialog')
+        .getByRole('combobox', { name: 'Room', exact: true }),
+    ).toHaveValue(atlas);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await suggestion.screenshot({
+      path: info.outputPath('smaller-room-mobile.png'),
+    });
+    await suggestion.getByRole('button', { name: 'Use Birch' }).click();
+    await expect(
+      page
+        .getByRole('dialog')
+        .getByRole('combobox', { name: 'Room', exact: true }),
+    ).toHaveValue(birch);
+    await expect(page.getByLabel('Meeting title')).toHaveValue(value.title);
+    await expect(page.getByLabel('Number of attendees')).toHaveValue('6');
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        response.url().endsWith('/api/reservations') &&
+        response.request().method() === 'POST',
+    );
+    await page
+      .getByRole('button', { name: 'Create reservation', exact: true })
+      .click();
+    const response = await responsePromise;
+    expect(response.status()).toBe(201);
+    const saved = (await response.json()) as Reservation;
+    createdId = saved.id;
+    expect(saved.roomId).toBe(birch);
+    expect(Date.parse(saved.startUtc)).toBe(Date.parse(value.startUtc));
+    expect(Date.parse(saved.endUtc)).toBe(Date.parse(value.endUtc));
+    await page.reload();
+    const row = page
+      .getByRole('article')
+      .filter({
+        has: page.getByRole('heading', { name: value.title, exact: true }),
+      });
+    await expect(row).toContainText('Birch');
+    await expect(row).toContainText('6 people');
+  } finally {
+    if (createdId) await request.post(`/api/reservations/${createdId}/cancel`);
+  }
+});
+
+test('a smaller room occupied during only the end of the meeting is not suggested', async ({
+  page,
+  request,
+}) => {
+  const value = {
+    ...booking(46),
+    title: 'Busy alternative check',
+    attendees: 6,
+  };
+  const blocker = await request.post('/api/reservations', {
+    data: {
+      ...value,
+      roomId: birch,
+      organizerId: emilija,
+      title: 'Partial overlap blocker',
+      startUtc: new Date(Date.parse(value.endUtc) - 60_000).toISOString(),
+    },
+  });
+  expect(blocker.status()).toBe(201);
+  const blocked = (await blocker.json()) as Reservation;
+  try {
+    await page.goto('/');
+    await page
+      .getByRole('button', { name: 'New reservation', exact: true })
+      .click();
+    const responsePromise = page.waitForResponse((response) => {
+      if (!response.url().includes('/api/room-suggestions?')) return false;
+      const query = new URL(response.url()).searchParams;
+      return (
+        query.get('attendees') === '6' &&
+        Date.parse(query.get('startUtc')!) === Date.parse(value.startUtc)
+      );
+    });
+    await fillBooking(page, value);
+    const response = await responsePromise;
+    expect(response.status()).toBe(200);
+    expect(await response.json()).toEqual([]);
+    await expect(
+      page.getByRole('complementary', { name: 'Smaller room suggestion' }),
+    ).toHaveCount(0);
+    await expect(
+      page
+        .getByRole('dialog')
+        .getByRole('combobox', { name: 'Room', exact: true }),
+    ).toHaveValue(atlas);
+    await expect(
+      page.getByRole('button', { name: 'Create reservation', exact: true }),
+    ).toBeEnabled();
+  } finally {
+    await request.post(`/api/reservations/${blocked.id}/cancel`);
+  }
+});
+
 test('create, reload, edit and cancel a booking through the real API', async ({
   page,
   request,

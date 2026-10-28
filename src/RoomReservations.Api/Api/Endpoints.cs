@@ -30,6 +30,12 @@ public static class Endpoints
             RoomAvailabilityService service, BookingProfile profile, ReservationsDbContext db, CancellationToken cancellationToken) =>
             await service.ReadAsync(startUtc, endUtc, organizerId is null ? null :
                 await profile.ScopeOrganizerAsync(db, organizerId, cancellationToken), cancellationToken));
+        app.MapGet("/api/room-suggestions", async (
+            Guid roomId, Guid organizerId, int attendees, DateTimeOffset startUtc, DateTimeOffset endUtc,
+            string? equipment, Guid? excludeReservationId,
+            RoomAvailabilityService service, CancellationToken cancellationToken) =>
+            await service.SuggestAsync(roomId, organizerId, attendees, startUtc, endUtc,
+                ParseEquipment(equipment), excludeReservationId, cancellationToken));
 
         app.MapGet("/api/rooms", async (
             int? minimumCapacity, string? floor, string? equipment,
@@ -37,13 +43,7 @@ public static class Endpoints
         {
             if (minimumCapacity is < 1)
                 throw new BookingException("INVALID_CAPACITY_FILTER", "Minimum capacity must be positive.");
-            var requiredEquipment = Equipment.None;
-            foreach (var code in (equipment ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-            {
-                if (!DtoMapping.EquipmentCodes.TryGetValue(code, out var value))
-                    throw new BookingException("INVALID_EQUIPMENT", $"Unknown equipment: {code}.");
-                requiredEquipment |= value;
-            }
+            var requiredEquipment = ParseEquipment(equipment);
             var rooms = await db.Rooms.AsNoTracking().OrderBy(r => r.Name).ToListAsync(cancellationToken);
             return rooms.Where(r =>
                 (minimumCapacity is null || r.Capacity >= minimumCapacity) &&
@@ -126,6 +126,18 @@ public static class Endpoints
         app.MapPost("/api/reservations/{id:guid}/end", async (
             Guid id, ReservationService service, CancellationToken cancellationToken) =>
             Results.Ok(await service.TransitionAsync(id, "end", cancellationToken)));
+    }
+
+    private static Equipment ParseEquipment(string? equipment)
+    {
+        var required = Equipment.None;
+        foreach (var code in (equipment ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!DtoMapping.EquipmentCodes.TryGetValue(code, out var value))
+                throw new BookingException("INVALID_EQUIPMENT", $"Unknown equipment: {code}.");
+            required |= value;
+        }
+        return required;
     }
 
     private static Guid? SubmissionKey(HttpRequest request)

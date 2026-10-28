@@ -24,6 +24,8 @@ No account needed. Choose a profile in the header and start with what’s next.
 
 Times use your device's timezone and are sent to the API as UTC instants. Room availability is a snapshot; saving repeats all conflict checks. Extra time is a separate linked booking and must fit the room and organizer schedules.
 
+The reservation form can suggest one smaller room that fits the attendee count and is free for the full meeting. It keeps explicit equipment requirements, shows any equipment differences, and changes the room only when you choose the suggestion. Saving rechecks availability.
+
 The app uses synthetic EF Core InMemory data in one server process. Browser refreshes preserve bookings while the process runs. A server restart resets the demo; seed IDs remain stable, and the ongoing example eventually ends.
 
 [Read the product design and research](docs/product-design.md) for the reasoning behind the flow.

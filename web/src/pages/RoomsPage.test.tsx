@@ -83,6 +83,7 @@ describe('room finder', () => {
       rooms[0]!.id,
       new Date('2026-11-04T09:00').toISOString(),
       new Date('2026-11-04T10:00').toISOString(),
+      [],
     );
   });
   it('does not misrepresent an availability failure as a booked room', async () => {
@@ -93,5 +94,21 @@ describe('room finder', () => {
     expect(screen.getByText('Not checked')).toBeInTheDocument();
     expect(screen.queryByText('Unavailable')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Check time' })).toBeDisabled();
+  });
+  it('carries explicit equipment requirements into the booking form', async () => {
+    const { onBook } = setup();
+    const user = userEvent.setup();
+    await screen.findByRole('button', { name: 'Book this room' });
+    await user.click(screen.getByRole('button', { name: 'Filters' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Whiteboard' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Book this room' }),
+    );
+    expect(onBook).toHaveBeenCalledWith(
+      rooms[0]!.id,
+      expect.any(String),
+      expect.any(String),
+      ['whiteboard'],
+    );
   });
 });

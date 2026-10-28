@@ -6,6 +6,7 @@ import {
 } from './api/client';
 import type {
   BookingRequest,
+  Equipment,
   Person,
   Reservation,
   ReservationAction,
@@ -55,6 +56,7 @@ type BookingForm = {
   roomId?: string;
   startUtc?: string;
   endUtc?: string;
+  requiredEquipment?: Equipment[];
 };
 
 export function App() {
@@ -321,8 +323,14 @@ export function App() {
               revision={revision}
               canBook={canBook}
               profile={profile}
-              onBook={(roomId, startUtc, endUtc) =>
-                setForm({ reservation: null, roomId, startUtc, endUtc })
+              onBook={(roomId, startUtc, endUtc, requiredEquipment) =>
+                setForm({
+                  reservation: null,
+                  roomId,
+                  startUtc,
+                  endUtc,
+                  requiredEquipment,
+                })
               }
             />
           ) : null}
@@ -367,6 +375,7 @@ export function App() {
           preferredRoomId={form.roomId}
           preferredStartUtc={form.startUtc}
           preferredEndUtc={form.endUtc}
+          requiredEquipment={form.requiredEquipment}
           onSave={save}
           onClose={() => setForm(null)}
         />

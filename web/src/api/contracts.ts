@@ -47,6 +47,11 @@ export interface RoomAvailability {
   reason: string | null;
 }
 
+export interface RoomSuggestion {
+  room: Room;
+  missingEquipment: Equipment[];
+}
+
 export interface BookingRequest {
   roomId: string;
   organizerId: string;

@@ -28,7 +28,12 @@ export function RoomsPage({
   revision: number;
   canBook: boolean;
   profile: string;
-  onBook: (roomId: string, startUtc: string, endUtc: string) => void;
+  onBook: (
+    roomId: string,
+    startUtc: string,
+    endUtc: string,
+    requiredEquipment: Equipment[],
+  ) => void;
 }) {
   const [capacity, setCapacity] = useState('');
   const [floor, setFloor] = useState('');
@@ -206,7 +211,7 @@ export function RoomsPage({
           availability={dirty ? [] : (availability.data ?? [])}
           bookingEnabled={ready}
           onBook={(roomId) =>
-            onBook(roomId, toUtc(slot.start), toUtc(slot.end))
+            onBook(roomId, toUtc(slot.start), toUtc(slot.end), equipment)
           }
         />
       ) : null}
