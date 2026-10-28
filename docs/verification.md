@@ -1,15 +1,28 @@
-# Verification
+# Verification record
 
 ## Reliability work, 28 October 2026
 
-The previous one-process checks did not establish consistency across hosted instances. User reports exposed missing seeded IDs, saved bookings absent on later requests and insufficient privacy. The fix is being reviewed in [PR 1](https://github.com/MerveilleDivine/room_reservation_system/pull/1).
+[Checks run 40664368137](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/40664368137) passed for application and test source `f2e62d90f91bff5c97ae238ced7fad7e47ff54a2`. The implementation is in [PR 1](https://github.com/MerveilleDivine/room_reservation_system/pull/1).
 
-At `02068bc`, 122 backend checks, 44 frontend checks and all three independent-host PostgreSQL checks passed. Ten of eleven browser scenarios passed in both setups. The extra-time browser check exposed sub-millisecond seed timestamps crossing the JavaScript Date boundary; seeds now align to whole minutes. A separate regression verifies that a genuinely partial minute is rounded down and cannot overlap another booking. Final CI results are recorded below once complete.
+| Check | Result |
+| --- | --- |
+| Backend Release tests | 123 passed; 3 PostgreSQL-only tests skipped in this job |
+| Independent-host PostgreSQL tests | All 3 passed against PostgreSQL 17 |
+| Frontend | Strict TypeScript, production build, 44 tests and formatting passed |
+| Development browser | All 11 Chromium scenarios passed |
+| Published container browser | All 11 Chromium scenarios passed |
 
-The public site still runs the older revision until a shared database is provisioned. Supabase refused a new free project because the account has reached its active-project limit. No existing app database has been modified. The hosted fix is not yet verified or submission-ready. Selectable demo profiles model read scope but do not authenticate users or protect real private data.
- record
+The new checks cover member-only detail reads, exact zero/two/seventeen-minute extension gaps, partial-minute rejection, and saved bookings resolving to their actual chronological page. Separate API hosts with separate DI containers verify shared seed editing, restart persistence, durable receipt recovery and rejection of competing overlaps through PostgreSQL.
 
-Latest full verification: 26 October 2026.
+The first browser run found hidden fractions of a millisecond in sample timestamps crossing the JavaScript Date boundary. Seeds now align to whole minutes. A genuinely shorter gap is still rounded down rather than allowed to overlap another booking.
+
+The earlier one-process checks did not establish consistency across hosted instances. User reports exposed missing seeded IDs and saved bookings absent on later requests. The public site still runs the older revision until a shared database is provisioned. Supabase refused a new free project because the account has reached its active-project limit. No existing app database has been modified.
+
+The hosted fix is not yet verified or submission-ready. The successful container browser job uses an explicit disposable InMemory override; it does not prove hosted database connectivity. Selectable demo profiles model read scope but do not authenticate users or protect real private data. See [hosted-storage.md](hosted-storage.md) for the remaining setup and verification.
+
+## Earlier verification
+
+Recorded verification: 26 October 2026.
 
 ## Personal schedule and room finder
 
