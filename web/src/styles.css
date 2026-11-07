@@ -1,3 +1,8 @@
+/* Import utilities and tokens without Preflight: preserve the existing design. */
+@layer theme, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
 :root {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: #242720;
@@ -143,6 +148,10 @@ nav[aria-label='Main navigation'] {
   gap: 3px;
 }
 .nav-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
   min-height: 44px;
   padding: 9px 13px;
   border: 0;
@@ -159,10 +168,7 @@ nav[aria-label='Main navigation'] {
   color: #263c2b;
 }
 .header-actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
+  @apply flex items-center justify-end gap-2;
 }
 .profile-switcher select {
   width: 150px;
@@ -210,17 +216,13 @@ h2,
   margin-bottom: 20px;
 }
 .button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  @apply inline-flex items-center justify-center gap-2 whitespace-nowrap;
   min-height: 44px;
   padding: 10px 17px;
   border: 1px solid transparent;
   border-radius: 24px;
   font-size: 13px;
   font-weight: 550;
-  white-space: nowrap;
 }
 .primary {
   background: #262c24;

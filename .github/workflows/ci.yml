@@ -18,7 +18,8 @@ jobs:
         with:
           dotnet-version: "10.0.x"
       - run: dotnet restore RoomReservations.slnx
-      - run: dotnet test RoomReservations.slnx --no-restore --configuration Release
+      - name: Verify backend behavior and architecture boundaries
+        run: dotnet test RoomReservations.slnx --no-restore --configuration Release
 
   frontend:
     runs-on: ubuntu-latest
@@ -35,7 +36,8 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
-      - run: npm run check
+      - name: Lint, type-check, build and test the frontend
+        run: npm run check
 
   browser:
     needs: [backend, frontend]

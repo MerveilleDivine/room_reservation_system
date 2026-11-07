@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   act,
   fireEvent,
@@ -6,7 +7,7 @@ import {
   screen,
   waitFor,
   within,
-} from '@testing-library/react';
+} from '../test/render';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { Reservation, ReservationFeed } from '../api/contracts';
@@ -29,8 +30,23 @@ function response(feed: ReservationFeed) {
   });
 }
 
+function RouteState() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  return (
+    <>
+      <span data-testid="schedule-url">
+        {location.pathname}
+        {location.search}
+      </span>
+      <button onClick={() => navigate(-1)}>Browser back</button>
+    </>
+  );
+}
+
 function renderSchedule(
   overrides: Partial<ComponentProps<typeof ReservationsPage>> = {},
+  initialEntries = ['/reservations'],
 ) {
   const props: ComponentProps<typeof ReservationsPage> = {
     profile: memberId,
@@ -45,7 +61,16 @@ function renderSchedule(
     onRefresh: vi.fn(),
     ...overrides,
   };
-  return { ...render(<ReservationsPage {...props} />), props };
+  return {
+    ...render(
+      <>
+        <ReservationsPage {...props} />
+        <RouteState />
+      </>,
+      { initialEntries },
+    ),
+    props,
+  };
 }
 
 function latestQuery(fetchMock: ReturnType<typeof vi.fn>) {
@@ -55,6 +80,58 @@ function latestQuery(fetchMock: ReturnType<typeof vi.fn>) {
 }
 
 describe('reservation schedule', () => {
+  it('loads shared filters from the URL and restores them with browser Back', async () => {
+    const fetchMock = vi.fn().mockImplementation((path: string) => {
+      const query = new URL(path, 'http://localhost').searchParams;
+      return Promise.resolve(
+        response(envelope([], Number(query.get('page')), 12)),
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderSchedule({ profile: 'admin' }, [
+      '/reservations?view=history&page=2&roomId=' +
+        rooms[0]!.id +
+        '&status=Cancelled',
+    ]);
+    await screen.findByText('Page 2 of 2');
+    expect(Object.fromEntries(latestQuery(fetchMock))).toMatchObject({
+      view: 'history',
+      page: '2',
+      roomId: rooms[0]!.id,
+      status: 'Cancelled',
+    });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Upcoming' }));
+    await waitFor(() =>
+      expect(latestQuery(fetchMock).get('view')).toBe('upcoming'),
+    );
+    expect(latestQuery(fetchMock).get('page')).toBe('1');
+    expect(latestQuery(fetchMock).has('status')).toBe(false);
+    expect(screen.getByTestId('schedule-url')).toHaveTextContent(
+      '/reservations?roomId=',
+    );
+    await user.click(screen.getByRole('button', { name: 'Browser back' }));
+    await waitFor(() =>
+      expect(latestQuery(fetchMock).get('view')).toBe('history'),
+    );
+    expect(latestQuery(fetchMock).get('page')).toBe('2');
+    expect(latestQuery(fetchMock).get('status')).toBe('Cancelled');
+  });
+
+  it('keeps a member scoped to their bookings even if a shared URL names another organizer', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response(envelope([])));
+    vi.stubGlobal('fetch', fetchMock);
+    renderSchedule({}, [
+      '/reservations?organizerId=someone-else&page=-2&from=invalid',
+    ]);
+    await screen.findByRole('heading', {
+      name: 'A little room in your schedule.',
+    });
+    expect(latestQuery(fetchMock).get('organizerId')).toBe(memberId);
+    expect(latestQuery(fetchMock).get('page')).toBe('1');
+    expect(latestQuery(fetchMock).has('from')).toBe(false);
+  });
+
   it('opens on the selected members upcoming bookings without requesting history', async () => {
     const fetchMock = vi
       .fn()

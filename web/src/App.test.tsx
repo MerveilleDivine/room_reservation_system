@@ -62,9 +62,7 @@ describe('workspace', () => {
   it('shows compact room search with real slot availability and disables inactive rooms', async () => {
     mockApi();
     render(<App />);
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'Rooms' }));
+    await userEvent.setup().click(screen.getByRole('link', { name: 'Rooms' }));
     expect(
       await screen.findByRole('heading', { name: 'Atlas' }),
     ).toBeInTheDocument();
@@ -81,7 +79,7 @@ describe('workspace', () => {
     const fetchMock = mockApi();
     render(<App />);
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Rooms' }));
+    await user.click(screen.getByRole('link', { name: 'Rooms' }));
     await screen.findByRole('heading', { name: 'Atlas' });
     await user.click(screen.getByRole('button', { name: 'Filters' }));
     await user.click(screen.getByRole('checkbox', { name: 'Projector' }));
@@ -103,13 +101,13 @@ describe('workspace', () => {
       screen.queryByRole('button', { name: 'Check in' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'People' }),
+      screen.queryByRole('link', { name: 'People' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Usage' }),
+      screen.queryByRole('link', { name: 'Usage' }),
     ).not.toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText('Current profile'), 'admin');
-    await user.click(screen.getByRole('button', { name: 'People' }));
+    await user.click(screen.getByRole('link', { name: 'People' }));
     expect(
       await screen.findByRole('heading', { name: 'Alex Morgan' }),
     ).toBeInTheDocument();
@@ -151,11 +149,13 @@ describe('workspace', () => {
         );
       return normalReply(url);
     });
-    vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
     render(<App />);
     await screen.findByRole('heading', { name: 'Planning' });
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Cancel reservation' }),
+    );
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'no longer active',
     );
@@ -165,6 +165,7 @@ describe('workspace', () => {
     expect(
       screen.queryByRole('heading', { name: 'Planning' }),
     ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Go back' }));
     await user.click(screen.getByRole('button', { name: 'Refresh schedule' }));
     await waitFor(() =>
       expect(screen.queryByRole('alert')).not.toBeInTheDocument(),

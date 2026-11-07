@@ -5,6 +5,7 @@ import { defaultProfile, storeProfile } from '../lib/profile';
 
 afterEach(() => {
   cleanup();
+  window.history.replaceState(null, '', '/');
   vi.unstubAllGlobals();
   sessionStorage.clear();
   storeProfile(defaultProfile);

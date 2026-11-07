@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { roomsApi } from '../features/rooms/api';
 import { equipmentLabels } from '../api/contracts';
 import type { Equipment, Room, RoomAvailability } from '../api/contracts';
 import { ErrorNotice } from '../components/Feedback';
@@ -47,8 +48,9 @@ export function RoomsPage({
   if (floor) query.set('floor', floor);
   if (equipment.length) query.set('equipment', equipment.join(','));
   const filtered = useApi<Room[]>(
-    query.size ? '/rooms?' + query : null,
+    query.size ? roomsApi.listPath(query) : null,
     revision,
+    profile,
   );
   const rooms = query.size ? filtered : allRooms;
   const availabilityQuery = new URLSearchParams({
@@ -57,8 +59,9 @@ export function RoomsPage({
   });
   if (profile !== 'admin') availabilityQuery.set('organizerId', profile);
   const availability = useApi<RoomAvailability[]>(
-    '/room-availability?' + availabilityQuery,
+    roomsApi.availabilityPath(availabilityQuery),
     revision + searchRevision,
+    profile,
   );
   const dirty = draft.start !== slot.start || draft.end !== slot.end;
   const floors = [
