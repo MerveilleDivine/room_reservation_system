@@ -26,6 +26,62 @@ function mockApi() {
 }
 
 describe('workspace', () => {
+  it('restores History without a saved-booking focus when navigating Back after a save', async () => {
+    const fetchMock = mockApi();
+    const normalReply = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url: string) =>
+      url === '/api/reservations'
+        ? new Response(JSON.stringify(reservation))
+        : normalReply(url),
+    );
+    render(<App />);
+    const user = userEvent.setup();
+    await screen.findByRole('heading', { name: 'Planning' });
+    await user.click(screen.getByRole('button', { name: 'History' }));
+    await waitFor(() =>
+      expect(window.location.search).toContain('view=history'),
+    );
+    await user.click(screen.getByRole('button', { name: 'New reservation' }));
+    await user.type(
+      screen.getByLabelText('Meeting title'),
+      'Saved from history',
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Create reservation' }),
+    );
+    await screen.findByRole('heading', { name: 'You’re booked' });
+    expect(window.location.search).toBe('');
+    await act(async () => {
+      window.history.back();
+    });
+    await waitFor(() => {
+      expect(window.location.search).toContain('view=history');
+      expect(screen.getByRole('button', { name: 'History' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+    expect(
+      screen.queryByRole('heading', { name: 'You’re booked' }),
+    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      const historyRequests = fetchMock.mock.calls
+        .map(([url]) => new URL(url, 'http://roomwise.test'))
+        .filter((url) => url.searchParams.get('view') === 'history');
+      expect(historyRequests.length).toBeGreaterThan(1);
+      expect(
+        historyRequests.every((url) => !url.searchParams.has('focusId')),
+      ).toBe(true);
+    });
+    await act(async () => {
+      window.history.forward();
+    });
+    await waitFor(() => expect(window.location.search).toBe(''));
+    expect(
+      screen.queryByRole('heading', { name: 'You’re booked' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('opens on a personal upcoming schedule, greets the person and makes no requests while idle', async () => {
     const fetchMock = mockApi();
     render(<App />);

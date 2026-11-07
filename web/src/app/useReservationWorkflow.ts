@@ -1,4 +1,5 @@
-import { useReducer } from 'react';
+import { useEffect, useReducer } from 'react';
+import { useLocation, useNavigationType } from 'react-router-dom';
 import type {
   BookingRequest,
   Equipment,
@@ -69,7 +70,7 @@ function reduceWorkflow(state: State, event: Event): State {
     case 'clear-feedback':
       return { ...state, saved: null, notice: '', actionError: null };
     case 'dismiss-saved':
-      return { ...state, saved: null };
+      return state.saved ? { ...state, saved: null } : state;
     case 'dismiss-notice':
       return { ...state, notice: '' };
     case 'saved':
@@ -98,6 +99,11 @@ export function useReservationWorkflow(
   showReservations: () => void,
 ) {
   const [state, dispatch] = useReducer(reduceWorkflow, initialState);
+  const navigationType = useNavigationType();
+  const { key: navigationKey } = useLocation();
+  useEffect(() => {
+    if (navigationType === 'POP') dispatch({ type: 'dismiss-saved' });
+  }, [navigationType, navigationKey]);
   const mutations = useBookingMutations(profile);
   const pending =
     mutations.save.isPending ||
@@ -182,6 +188,8 @@ export function useReservationWorkflow(
 
   return {
     ...state,
+    // Confirmation belongs to the navigation after saving, never a history entry.
+    saved: navigationType === 'POP' ? null : state.saved,
     pending,
     save,
     saveContinuation,

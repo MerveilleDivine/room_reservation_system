@@ -57,12 +57,15 @@ export function ReservationsPage({
   const [dismissedSaved, setDismissedSaved] = useState<SavedBooking | null>(
     null,
   );
-  const confirmation = saved !== dismissedSaved ? saved : null;
+  const { view, page, roomId, organizerId, status, from, to } = filters;
+  const isConfirmationView =
+    view === 'upcoming' && !roomId && !organizerId && !status && !from && !to;
+  const confirmation =
+    saved !== dismissedSaved && isConfirmationView ? saved : null;
   const focusId = confirmation?.reservation.id ?? null;
   const [filtersOpen, setFiltersOpen] = useState(false);
   const confirmationHeading = useRef<HTMLHeadingElement>(null);
   const scheduleHeading = useRef<HTMLHeadingElement>(null);
-  const { view, page, roomId, organizerId, status, from, to } = filters;
   const query = new URLSearchParams({
     view,
     page: String(focusId && saved ? 1 : page),
@@ -110,8 +113,8 @@ export function ReservationsPage({
     );
   }, [feed.data, page, resolvedPage, setSearch]);
   useEffect(() => {
-    if (saved) confirmationHeading.current?.focus();
-  }, [saved]);
+    if (confirmation) confirmationHeading.current?.focus();
+  }, [confirmation]);
 
   function changeFilters(patch: Partial<Filters>) {
     setDismissedSaved(saved);
@@ -136,9 +139,9 @@ export function ReservationsPage({
 
   return (
     <section aria-label="Reservation schedule">
-      {saved ? (
+      {confirmation ? (
         <BookingConfirmation
-          saved={saved}
+          saved={confirmation}
           headingRef={confirmationHeading}
           onDismiss={onDismissSaved}
         />
