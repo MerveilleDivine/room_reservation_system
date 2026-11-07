@@ -10,6 +10,8 @@ Built for an internship technical assignment with **ASP.NET Core, Entity Framewo
 
 **[Open Roomwise](https://roomwise-reservations.onrender.com/)** · [Run locally](#run-locally) · [How it works](#how-it-works) · [Architecture](docs/architecture.md)
 
+This branch contains the feedback refactor described in the [repair walkthrough](docs/feedback-remediation.md). Its local verification is recorded separately from the earlier public-demo release in [verification.md](docs/verification.md).
+
 ## Try it out
 
 No account setup is needed. Choose a sample profile in the header to explore the app.
@@ -83,11 +85,11 @@ The duration and advance limits can be changed in [appsettings.json](src/RoomRes
 | -------- | ------------------------------------------------------------------------- |
 | Backend  | ASP.NET Core on .NET 10                                                   |
 | Data     | Entity Framework Core InMemory with seeded rooms, people and reservations |
-| Frontend | React 19, TypeScript and Vite                                             |
+| Frontend | React 19, TypeScript, Vite, React Router, Axios and TanStack Query                                             |
 | Testing  | xUnit, Vitest, React Testing Library and Playwright                       |
 | Delivery | GitHub Actions, Docker and a single-instance Render service               |
 
-The app uses one API project, one backend test project and one frontend. No external database, secrets or database account are needed to run it locally.
+The app uses Domain, Application, Infrastructure and API projects, one backend test project and one frontend. No external database, secrets or database account are needed to run it locally.
 
 ## Run locally
 
@@ -123,7 +125,7 @@ npm ci
 npm run dev
 ```
 
-Open **[http://127.0.0.1:5173](http://127.0.0.1:5173)** and choose a profile. Vite forwards API requests to the backend on port 5080.
+Open **[http://127.0.0.1:5173](http://127.0.0.1:5173)** and choose a profile. Vite forwards API requests to the backend on port 5080. The Axios base URL defaults to `/api`; set `VITE_API_BASE_URL` at build time only when a different API location is needed. See [web/.env.example](web/.env.example).
 
 If the page cannot reach the API, check that both terminals are still running. If `dotnet` is not recognized after installation, restart your terminal. VS Code’s **Terminal → Run Task** menu also includes API, frontend and test commands.
 
@@ -152,7 +154,7 @@ Run frontend checks from `web`:
 npm run check
 ```
 
-This checks TypeScript, builds the frontend, runs unit tests and checks formatting.
+This runs ESLint, checks TypeScript, builds the frontend, runs unit tests and checks formatting.
 
 For browser tests, stop the local development servers so their ports are free, then run from `web`:
 
@@ -169,16 +171,16 @@ GitHub Actions also runs the browser scenarios against the published Docker cont
 
 | Folder                                    | What belongs there                                                         |
 | ----------------------------------------- | -------------------------------------------------------------------------- |
-| `src/RoomReservations.Api/Domain`         | Rooms, people, reservations and reservation states                         |
-| `src/RoomReservations.Api/Application`    | Booking rules, availability, suggestions, reservation services and reports |
-| `src/RoomReservations.Api/Infrastructure` | EF Core context, sample data and the booking write gate                    |
+| `src/RoomReservations.Domain`         | Rooms, people, reservations and reservation states                         |
+| `src/RoomReservations.Application`    | Booking rules, availability, suggestions, reservation services and reports |
+| `src/RoomReservations.Infrastructure` | EF Core context, sample data and the booking write gate                    |
 | `src/RoomReservations.Api/Api`            | HTTP endpoints and consistent API errors                                   |
 | `web/src`                                 | React pages, forms, API client and interface components                    |
 | `tests/RoomReservations.Api.Tests`        | Backend rule, API, recovery and concurrency tests                          |
 | `web/e2e`                                 | Browser tests using the real API                                           |
 | `docs`                                    | Requirements, decisions, API reference and verification evidence           |
 
-I wanted the structure to be easy to follow, with the booking rules in one place. Start with the [architecture notes](docs/architecture.md) for the decisions and their trade-offs.
+I wanted the structure to be easy to follow, with the booking rules in one place. Start with the [feedback walkthrough](docs/feedback-remediation.md) and [architecture notes](docs/architecture.md) for the decisions and their trade-offs.
 
 ## Demo scope and hosting
 

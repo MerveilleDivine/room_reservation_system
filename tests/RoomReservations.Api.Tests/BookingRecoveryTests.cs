@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
-using RoomReservations.Api.Application;
+using Microsoft.Extensions.DependencyInjection;
+using RoomReservations.Application;
+using RoomReservations.Application.Abstractions;
+using RoomReservations.Domain;
 
 namespace RoomReservations.Api.Tests;
 
@@ -18,11 +21,11 @@ public sealed class BookingRecoveryTests
         using var client = app.CreateClient();
         var key = Guid.NewGuid();
         var responses = await Task.WhenAll(
-            Submit(client, HttpMethod.Post, "/api/reservations", Valid, key),
-            Submit(client, HttpMethod.Post, "/api/reservations", Valid, key));
+            SubmitAsync(client, HttpMethod.Post, "/api/reservations", Valid, key),
+            SubmitAsync(client, HttpMethod.Post, "/api/reservations", Valid, key));
         Assert.All(responses, response => Assert.Equal(HttpStatusCode.Created, response.StatusCode));
-        var first = await Read(responses[0]);
-        Assert.Equal(first.Id, (await Read(responses[1])).Id);
+        var first = await ReadAsync(responses[0]);
+        Assert.Equal(first.Id, (await ReadAsync(responses[1])).Id);
         var recovered = await client.GetFromJsonAsync<ReservationDto>($"/api/booking-requests/{key}");
         Assert.Equal(first.Id, recovered!.Id);
         var reservations = await client.GetFromJsonAsync<ReservationDto[]>("/api/reservations");
@@ -35,12 +38,12 @@ public sealed class BookingRecoveryTests
         await using var app = new TestApplication();
         using var client = app.CreateClient();
         var key = Guid.NewGuid();
-        var created = await Read(await Submit(client, HttpMethod.Post, "/api/reservations", Valid, key));
+        var created = await ReadAsync(await SubmitAsync(client, HttpMethod.Post, "/api/reservations", Valid, key));
         app.Clock.UtcNow = Valid.StartUtc.AddMinutes(10);
         var retry = Valid with { Title = $"  {Valid.Title}  ", StartUtc = Valid.StartUtc.ToOffset(TimeSpan.FromHours(3)), EndUtc = Valid.EndUtc.ToOffset(TimeSpan.FromHours(3)) };
-        var replay = await Submit(client, HttpMethod.Post, "/api/reservations", retry, key);
+        var replay = await SubmitAsync(client, HttpMethod.Post, "/api/reservations", retry, key);
         Assert.Equal(HttpStatusCode.Created, replay.StatusCode);
-        Assert.Equal(created.Id, (await Read(replay)).Id);
+        Assert.Equal(created.Id, (await ReadAsync(replay)).Id);
     }
 
     [Fact]
@@ -49,11 +52,11 @@ public sealed class BookingRecoveryTests
         await using var app = new TestApplication();
         using var client = app.CreateClient();
         var key = Guid.NewGuid();
-        var created = await Read(await Submit(client, HttpMethod.Post, "/api/reservations", Valid, key));
-        var changed = await Submit(client, HttpMethod.Post, "/api/reservations", Valid with { Title = "Different" }, key);
-        await AssertProblem(changed, HttpStatusCode.Conflict, "IDEMPOTENCY_KEY_REUSED");
-        var edit = await Submit(client, HttpMethod.Put, $"/api/reservations/{created.Id}", Valid, key);
-        await AssertProblem(edit, HttpStatusCode.Conflict, "IDEMPOTENCY_KEY_REUSED");
+        var created = await ReadAsync(await SubmitAsync(client, HttpMethod.Post, "/api/reservations", Valid, key));
+        var changed = await SubmitAsync(client, HttpMethod.Post, "/api/reservations", Valid with { Title = "Different" }, key);
+        await AssertProblemAsync(changed, HttpStatusCode.Conflict, "IDEMPOTENCY_KEY_REUSED");
+        var edit = await SubmitAsync(client, HttpMethod.Put, $"/api/reservations/{created.Id}", Valid, key);
+        await AssertProblemAsync(edit, HttpStatusCode.Conflict, "IDEMPOTENCY_KEY_REUSED");
     }
 
     [Fact]
@@ -61,13 +64,13 @@ public sealed class BookingRecoveryTests
     {
         await using var app = new TestApplication();
         using var client = app.CreateClient();
-        var created = await Read(await client.PostAsJsonAsync("/api/reservations", Valid));
+        var created = await ReadAsync(await client.PostAsJsonAsync("/api/reservations", Valid));
         var key = Guid.NewGuid();
         var path = $"/api/reservations/{created.Id}";
         var firstEdit = Valid with { Title = "First edit" };
-        await Submit(client, HttpMethod.Put, path, firstEdit, key);
+        await SubmitAsync(client, HttpMethod.Put, path, firstEdit, key);
         await client.PutAsJsonAsync(path, Valid with { Title = "Later edit" });
-        var replay = await Read(await Submit(client, HttpMethod.Put, path, firstEdit, key));
+        var replay = await ReadAsync(await SubmitAsync(client, HttpMethod.Put, path, firstEdit, key));
         Assert.Equal("Later edit", replay.Title);
         Assert.Equal("Later edit", (await client.GetFromJsonAsync<ReservationDto>(path))!.Title);
     }
@@ -78,11 +81,11 @@ public sealed class BookingRecoveryTests
         await using var app = new TestApplication();
         using var client = app.CreateClient();
         var key = Guid.NewGuid();
-        var invalid = await Submit(client, HttpMethod.Post, "/api/reservations", Valid with { Attendees = 100 }, key);
-        await AssertProblem(invalid, HttpStatusCode.BadRequest, "CAPACITY_EXCEEDED");
+        var invalid = await SubmitAsync(client, HttpMethod.Post, "/api/reservations", Valid with { Attendees = 100 }, key);
+        await AssertProblemAsync(invalid, HttpStatusCode.BadRequest, "CAPACITY_EXCEEDED");
         var missing = await client.GetAsync($"/api/booking-requests/{key}");
-        await AssertProblem(missing, HttpStatusCode.NotFound, "BOOKING_REQUEST_NOT_FOUND");
-        var corrected = await Submit(client, HttpMethod.Post, "/api/reservations", Valid, key);
+        await AssertProblemAsync(missing, HttpStatusCode.NotFound, "BOOKING_REQUEST_NOT_FOUND");
+        var corrected = await SubmitAsync(client, HttpMethod.Post, "/api/reservations", Valid, key);
         Assert.Equal(HttpStatusCode.Created, corrected.StatusCode);
     }
 
@@ -96,24 +99,64 @@ public sealed class BookingRecoveryTests
         using var client = app.CreateClient();
         using var message = new HttpRequestMessage(HttpMethod.Post, "/api/reservations") { Content = JsonContent.Create(Valid) };
         message.Headers.TryAddWithoutValidation("Idempotency-Key", key);
-        await AssertProblem(await client.SendAsync(message), HttpStatusCode.BadRequest, "INVALID_REQUEST_ID");
+        await AssertProblemAsync(await client.SendAsync(message), HttpStatusCode.BadRequest, "INVALID_REQUEST_ID");
     }
 
-    private static async Task<HttpResponseMessage> Submit(HttpClient client, HttpMethod method, string path, BookingRequest value, Guid key)
+    [Fact]
+    public async Task Recovery_waits_for_the_shared_gate_and_a_cancelled_wait_does_not_hold_it()
+    {
+        // Arrange: a real API write has produced a receipt in this server lifetime.
+        await using var app = new TestApplication();
+        using var client = app.CreateClient();
+        var key = Guid.NewGuid();
+        var saved = await ReadAsync(await SubmitAsync(client, HttpMethod.Post, "/api/reservations", Valid, key));
+        await using var scope = app.Services.CreateAsyncScope();
+        var store = scope.ServiceProvider.GetRequiredService<IBookingStore>();
+        var gate = scope.ServiceProvider.GetRequiredService<IBookingGate>();
+        var service = new ReservationService(store, scope.ServiceProvider.GetRequiredService<BookingRules>(),
+            app.Clock, gate, new BookingProfile(new AdministratorProfile(), store));
+
+        Task<ReservationDto> recovery;
+        using (await gate.EnterAsync(CancellationToken.None))
+        {
+            // Act: recovery cannot inspect receipts until the write lease is released.
+            using var cancellation = new CancellationTokenSource();
+            var cancelledRecovery = service.RecoverAsync(key, cancellation.Token);
+            Assert.False(cancelledRecovery.IsCompleted);
+            cancellation.Cancel();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cancelledRecovery.WaitAsync(TimeSpan.FromSeconds(5)));
+
+            recovery = service.RecoverAsync(key, CancellationToken.None);
+            Assert.False(recovery.IsCompleted);
+        }
+
+        // Assert: the next waiter acquires the gate and reads the existing booking.
+        var recovered = await recovery.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(saved.Id, recovered.Id);
+    }
+
+    private static async Task<HttpResponseMessage> SubmitAsync(HttpClient client, HttpMethod method, string path, BookingRequest value, Guid key)
     {
         using var message = new HttpRequestMessage(method, path) { Content = JsonContent.Create(value) };
         message.Headers.Add("Idempotency-Key", key.ToString());
         return await client.SendAsync(message);
     }
 
-    private static async Task<ReservationDto> Read(HttpResponseMessage response) =>
+    private static async Task<ReservationDto> ReadAsync(HttpResponseMessage response) =>
         (await response.Content.ReadFromJsonAsync<ReservationDto>())!;
 
-    private static async Task AssertProblem(HttpResponseMessage response, HttpStatusCode status, string code)
+    private static async Task AssertProblemAsync(HttpResponseMessage response, HttpStatusCode status, string code)
     {
-        Assert.Equal(status, response.StatusCode);
-        Assert.Equal(code, (await response.Content.ReadFromJsonAsync<Problem>())!.Code);
+        var problem = await response.Content.ReadFromJsonAsync<Problem>();
+        Assert.Multiple(
+            () => Assert.Equal(status, response.StatusCode),
+            () => Assert.Equal(code, problem!.Code));
     }
 
     private sealed record Problem(string Code);
+
+    private sealed class AdministratorProfile : ICurrentDemoProfile
+    {
+        public DemoProfileSelection Selection => new(DemoProfileKind.Administrator);
+    }
 }

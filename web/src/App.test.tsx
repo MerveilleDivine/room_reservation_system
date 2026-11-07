@@ -26,6 +26,62 @@ function mockApi() {
 }
 
 describe('workspace', () => {
+  it('restores History without a saved-booking focus when navigating Back after a save', async () => {
+    const fetchMock = mockApi();
+    const normalReply = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url: string) =>
+      url === '/api/reservations'
+        ? new Response(JSON.stringify(reservation))
+        : normalReply(url),
+    );
+    render(<App />);
+    const user = userEvent.setup();
+    await screen.findByRole('heading', { name: 'Planning' });
+    await user.click(screen.getByRole('button', { name: 'History' }));
+    await waitFor(() =>
+      expect(window.location.search).toContain('view=history'),
+    );
+    await user.click(screen.getByRole('button', { name: 'New reservation' }));
+    await user.type(
+      screen.getByLabelText('Meeting title'),
+      'Saved from history',
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Create reservation' }),
+    );
+    await screen.findByRole('heading', { name: 'You’re booked' });
+    expect(window.location.search).toBe('');
+    await act(async () => {
+      window.history.back();
+    });
+    await waitFor(() => {
+      expect(window.location.search).toContain('view=history');
+      expect(screen.getByRole('button', { name: 'History' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+    expect(
+      screen.queryByRole('heading', { name: 'You’re booked' }),
+    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      const historyRequests = fetchMock.mock.calls
+        .map(([url]) => new URL(url, 'http://roomwise.test'))
+        .filter((url) => url.searchParams.get('view') === 'history');
+      expect(historyRequests.length).toBeGreaterThan(1);
+      expect(
+        historyRequests.every((url) => !url.searchParams.has('focusId')),
+      ).toBe(true);
+    });
+    await act(async () => {
+      window.history.forward();
+    });
+    await waitFor(() => expect(window.location.search).toBe(''));
+    expect(
+      screen.queryByRole('heading', { name: 'You’re booked' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('opens on a personal upcoming schedule, greets the person and makes no requests while idle', async () => {
     const fetchMock = mockApi();
     render(<App />);
@@ -62,9 +118,7 @@ describe('workspace', () => {
   it('shows compact room search with real slot availability and disables inactive rooms', async () => {
     mockApi();
     render(<App />);
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'Rooms' }));
+    await userEvent.setup().click(screen.getByRole('link', { name: 'Rooms' }));
     expect(
       await screen.findByRole('heading', { name: 'Atlas' }),
     ).toBeInTheDocument();
@@ -81,7 +135,7 @@ describe('workspace', () => {
     const fetchMock = mockApi();
     render(<App />);
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Rooms' }));
+    await user.click(screen.getByRole('link', { name: 'Rooms' }));
     await screen.findByRole('heading', { name: 'Atlas' });
     await user.click(screen.getByRole('button', { name: 'Filters' }));
     await user.click(screen.getByRole('checkbox', { name: 'Projector' }));
@@ -103,13 +157,13 @@ describe('workspace', () => {
       screen.queryByRole('button', { name: 'Check in' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'People' }),
+      screen.queryByRole('link', { name: 'People' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Usage' }),
+      screen.queryByRole('link', { name: 'Usage' }),
     ).not.toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText('Current profile'), 'admin');
-    await user.click(screen.getByRole('button', { name: 'People' }));
+    await user.click(screen.getByRole('link', { name: 'People' }));
     expect(
       await screen.findByRole('heading', { name: 'Alex Morgan' }),
     ).toBeInTheDocument();
@@ -151,11 +205,13 @@ describe('workspace', () => {
         );
       return normalReply(url);
     });
-    vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
     render(<App />);
     await screen.findByRole('heading', { name: 'Planning' });
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Cancel reservation' }),
+    );
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'no longer active',
     );
@@ -165,6 +221,7 @@ describe('workspace', () => {
     expect(
       screen.queryByRole('heading', { name: 'Planning' }),
     ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Go back' }));
     await user.click(screen.getByRole('button', { name: 'Refresh schedule' }));
     await waitFor(() =>
       expect(screen.queryByRole('alert')).not.toBeInTheDocument(),

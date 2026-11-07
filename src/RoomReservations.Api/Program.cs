@@ -1,44 +1,32 @@
-using Microsoft.EntityFrameworkCore;
 using RoomReservations.Api.Api;
-using RoomReservations.Api.Application;
-using RoomReservations.Api.Infrastructure;
+using RoomReservations.Api;
+using RoomReservations.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.Configure<Microsoft.AspNetCore.Routing.RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
-builder.Services.AddProblemDetails();
-builder.Services.AddExceptionHandler<ApiExceptionHandler>();
-builder.Services.AddOptions<BookingOptions>()
-    .BindConfiguration(BookingOptions.SectionName)
-    .Validate(options => options.MaximumDurationDays is > 0 and <= 365, "Duration must be between 1 and 365 days.")
-    .Validate(options => options.MaximumAdvanceDays is > 0 and <= 3650, "Advance window must be between 1 and 3650 days.")
-    .ValidateOnStart();
 if (Environment.GetEnvironmentVariable("VERCEL") == "1")
     throw new InvalidOperationException("This InMemory demo requires one server process. Use the single-instance host in render.yaml or run locally.");
-builder.Services.AddDbContext<ReservationsDbContext>(options => options.UseInMemoryDatabase("room-reservations"));
-builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton<BookingWriteGate>();
-builder.Services.AddScoped<BookingRules>();
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<BookingProfile>();
-builder.Services.AddScoped<ReservationService>();
-builder.Services.AddScoped<UsageReportService>();
-builder.Services.AddScoped<ReservationFeedService>();
-builder.Services.AddScoped<RoomAvailabilityService>();
-builder.Services.AddScoped<ExtraTimeService>();
+builder.Services.AddRoomReservations();
 
 var app = builder.Build();
 app.UseExceptionHandler();
+app.UseStatusCodePages(async context =>
+{
+    var http = context.HttpContext;
+    if (http.Response.StatusCode == StatusCodes.Status404NotFound &&
+        http.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+        await Results.Problem(statusCode: StatusCodes.Status404NotFound, title: ApiErrorCodes.ApiNotFound,
+            detail: "This API endpoint could not be found.",
+            extensions: new Dictionary<string, object?> { ["code"] = ApiErrorCodes.ApiNotFound }).ExecuteAsync(http);
+});
 if (Directory.Exists(app.Environment.WebRootPath))
 {
     app.UseDefaultFiles();
     app.UseStaticFiles();
 }
 app.MapReservationApi();
-await using (var scope = app.Services.CreateAsyncScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<ReservationsDbContext>();
-    await SeedData.InitializeAsync(db, scope.ServiceProvider.GetRequiredService<TimeProvider>());
-}
+// Exclude API requests and missing asset files from frontend routing.
+app.MapFallbackToFile("{*path:nonfile:spa}", "index.html");
+await app.Services.SeedRoomReservationsAsync();
 app.Run();
 
 public partial class Program { }

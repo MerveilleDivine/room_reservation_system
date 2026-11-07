@@ -1,9 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
-using RoomReservations.Api.Application;
-using RoomReservations.Api.Domain;
-using RoomReservations.Api.Infrastructure;
+using RoomReservations.Application;
+using RoomReservations.Domain;
+using RoomReservations.Infrastructure;
 
 namespace RoomReservations.Api.Tests;
 

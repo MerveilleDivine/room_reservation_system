@@ -2,8 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using RoomReservations.Api.Application;
-using RoomReservations.Api.Infrastructure;
+using RoomReservations.Application;
+using RoomReservations.Infrastructure;
 
 namespace RoomReservations.Api.Tests;
 
@@ -14,9 +14,9 @@ public sealed class ContinuationTests
     {
         await using var app = new TestApplication();
         using var client = app.CreateClient();
-        var parent = await Ongoing(client);
+        var parent = await OngoingAsync(client);
         await client.PostAsync($"/api/reservations/{parent.Id}/check-in", null);
-        var response = await Continue(client, parent.Id, 30);
+        var response = await ContinueAsync(client, parent.Id, 30);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var child = (await response.Content.ReadFromJsonAsync<ReservationDto>())!;
         Assert.NotEqual(parent.Id, child.Id);
@@ -46,13 +46,13 @@ public sealed class ContinuationTests
     {
         await using var app = new TestApplication();
         using var client = app.CreateClient();
-        var parent = await Ongoing(client);
+        var parent = await OngoingAsync(client);
         var nextBooking = new BookingRequest(
             organizerConflict ? Guid.Parse("10000000-0000-0000-0000-000000000001") : parent.RoomId,
             organizerConflict ? parent.OrganizerId : Guid.Parse("20000000-0000-0000-0000-000000000001"),
             "Next team", parent.EndUtc, parent.EndUtc.AddHours(1), 2);
         Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/reservations", nextBooking)).StatusCode);
-        await AssertProblem(await Continue(client, parent.Id, 15), HttpStatusCode.Conflict, code);
+        await AssertProblemAsync(await ContinueAsync(client, parent.Id, 15), HttpStatusCode.Conflict, code);
         var reservations = await client.GetFromJsonAsync<ReservationDto[]>("/api/reservations");
         Assert.DoesNotContain(reservations!, item => item.ContinuationOfId == parent.Id);
     }
@@ -66,13 +66,13 @@ public sealed class ContinuationTests
     {
         await using var app = new TestApplication();
         using var client = app.CreateClient();
-        var parent = await Ongoing(client);
+        var parent = await OngoingAsync(client);
         if (state is "future" or "cancelled")
             parent = (await client.GetFromJsonAsync<ReservationDto[]>("/api/reservations"))!.Single(item => item.Title == "Product planning");
         if (state == "cancelled") await client.PostAsync($"/api/reservations/{parent.Id}/cancel", null);
         if (state == "ended") await client.PostAsync($"/api/reservations/{parent.Id}/end", null);
         if (state == "elapsed") app.Clock.UtcNow = parent.EndUtc;
-        await AssertProblem(await Continue(client, parent.Id, 15), HttpStatusCode.Conflict, "MEETING_NOT_ONGOING");
+        await AssertProblemAsync(await ContinueAsync(client, parent.Id, 15), HttpStatusCode.Conflict, "MEETING_NOT_ONGOING");
     }
 
     [Fact]
@@ -80,12 +80,12 @@ public sealed class ContinuationTests
     {
         await using var app = new TestApplication();
         using var client = app.CreateClient();
-        var parent = await Ongoing(client);
+        var parent = await OngoingAsync(client);
         var key = Guid.NewGuid();
-        var created = (await (await Continue(client, parent.Id, 15, key)).Content.ReadFromJsonAsync<ReservationDto>())!;
+        var created = (await (await ContinueAsync(client, parent.Id, 15, key)).Content.ReadFromJsonAsync<ReservationDto>())!;
         await client.PostAsync($"/api/reservations/{created.Id}/cancel", null);
         app.Clock.UtcNow = parent.EndUtc.AddMinutes(1);
-        var replay = await Continue(client, parent.Id, 15, key);
+        var replay = await ContinueAsync(client, parent.Id, 15, key);
         Assert.Equal(HttpStatusCode.Created, replay.StatusCode);
         var recovered = (await replay.Content.ReadFromJsonAsync<ReservationDto>())!;
         Assert.Equal(created.Id, recovered.Id);
@@ -97,11 +97,11 @@ public sealed class ContinuationTests
     {
         await using var app = new TestApplication();
         using var client = app.CreateClient();
-        var parent = await Ongoing(client);
-        var child = (await (await Continue(client, parent.Id, 15)).Content.ReadFromJsonAsync<ReservationDto>())!;
-        await AssertProblem(await Continue(client, parent.Id, 30), HttpStatusCode.Conflict, "CONTINUATION_ALREADY_BOOKED");
+        var parent = await OngoingAsync(client);
+        var child = (await (await ContinueAsync(client, parent.Id, 15)).Content.ReadFromJsonAsync<ReservationDto>())!;
+        await AssertProblemAsync(await ContinueAsync(client, parent.Id, 30), HttpStatusCode.Conflict, "CONTINUATION_ALREADY_BOOKED");
         await client.PostAsync($"/api/reservations/{child.Id}/cancel", null);
-        Assert.Equal(HttpStatusCode.Created, (await Continue(client, parent.Id, 30)).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await ContinueAsync(client, parent.Id, 30)).StatusCode);
     }
 
     [Theory]
@@ -113,8 +113,8 @@ public sealed class ContinuationTests
     {
         await using var app = new TestApplication(maximumDurationDays: 1);
         using var client = app.CreateClient();
-        var parent = await Ongoing(client);
-        await AssertProblem(await Continue(client, parent.Id, minutes), HttpStatusCode.BadRequest, "INVALID_ADDITIONAL_TIME");
+        var parent = await OngoingAsync(client);
+        await AssertProblemAsync(await ContinueAsync(client, parent.Id, minutes), HttpStatusCode.BadRequest, "INVALID_ADDITIONAL_TIME");
     }
 
     [Fact]
@@ -122,17 +122,17 @@ public sealed class ContinuationTests
     {
         await using var app = new TestApplication();
         using var client = app.CreateClient();
-        var parent = await Ongoing(client);
+        var parent = await OngoingAsync(client);
         await using var scope = app.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ReservationsDbContext>();
         var room = await db.Rooms.SingleAsync(item => item.Id == parent.RoomId);
         room.IsActive = false;
         await db.SaveChangesAsync();
-        await AssertProblem(await Continue(client, parent.Id, 15), HttpStatusCode.BadRequest, "ROOM_INACTIVE");
+        await AssertProblemAsync(await ContinueAsync(client, parent.Id, 15), HttpStatusCode.BadRequest, "ROOM_INACTIVE");
         room.IsActive = true;
         room.Capacity = 1;
         await db.SaveChangesAsync();
-        await AssertProblem(await Continue(client, parent.Id, 15), HttpStatusCode.BadRequest, "CAPACITY_EXCEEDED");
+        await AssertProblemAsync(await ContinueAsync(client, parent.Id, 15), HttpStatusCode.BadRequest, "CAPACITY_EXCEEDED");
     }
 
     [Fact]
@@ -140,7 +140,7 @@ public sealed class ContinuationTests
     {
         await using var app = new TestApplication();
         using var client = app.CreateClient();
-        var parent = await Ongoing(client);
+        var parent = await OngoingAsync(client);
         Assert.Contains("reserve-more", parent.AllowedActions);
         app.Clock.UtcNow = parent.EndUtc;
         var completed = (await client.GetFromJsonAsync<ReservationDto>($"/api/reservations/{parent.Id}"))!;
@@ -150,10 +150,10 @@ public sealed class ContinuationTests
         Assert.Empty(completed.AllowedActions);
     }
 
-    private static async Task<ReservationDto> Ongoing(HttpClient client) =>
+    private static async Task<ReservationDto> OngoingAsync(HttpClient client) =>
         (await client.GetFromJsonAsync<ReservationDto[]>("/api/reservations"))!.Single(item => item.Title == "Engineering sync");
 
-    private static async Task<HttpResponseMessage> Continue(HttpClient client, Guid id, int minutes, Guid? key = null)
+    private static async Task<HttpResponseMessage> ContinueAsync(HttpClient client, Guid id, int minutes, Guid? key = null)
     {
         using var message = new HttpRequestMessage(HttpMethod.Post, $"/api/reservations/{id}/continuations")
         { Content = JsonContent.Create(new ContinuationRequest(minutes)) };
@@ -161,10 +161,12 @@ public sealed class ContinuationTests
         return await client.SendAsync(message);
     }
 
-    private static async Task AssertProblem(HttpResponseMessage response, HttpStatusCode status, string code)
+    private static async Task AssertProblemAsync(HttpResponseMessage response, HttpStatusCode status, string code)
     {
-        Assert.Equal(status, response.StatusCode);
-        Assert.Equal(code, (await response.Content.ReadFromJsonAsync<Problem>())!.Code);
+        var problem = await response.Content.ReadFromJsonAsync<Problem>();
+        Assert.Multiple(
+            () => Assert.Equal(status, response.StatusCode),
+            () => Assert.Equal(code, problem!.Code));
     }
 
     private sealed record Problem(string Code);

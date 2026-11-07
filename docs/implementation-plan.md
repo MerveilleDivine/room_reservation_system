@@ -1,5 +1,7 @@
 # Implementation plan
 
+This document records earlier implementation milestones and their historical checks. For the November feedback repair, use [feedback-remediation.md](feedback-remediation.md), [architecture.md](architecture.md) and the current section of [verification.md](verification.md).
+
 ## Current implementation
 
 The required stack remains ASP.NET Core/C#, EF Core InMemory and React/TypeScript. The original booking rules, configured duration/advance limits and error contract remain authoritative on the backend.

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { reservation } from '../test/fixtures';
+import { defaultProfile, storeProfile } from '../lib/profile';
 import {
   ApiError,
   request,
@@ -94,9 +95,6 @@ describe('API boundary', () => {
       expect(result.id).toBe(reservation.id);
       expect(fetchMock).toHaveBeenCalledTimes(2);
       expect(
-        (fetchMock.mock.calls[0]![1] as RequestInit).headers,
-      ).toBeInstanceOf(Headers);
-      expect(
         new Headers((fetchMock.mock.calls[0]![1] as RequestInit).headers).get(
           'Idempotency-Key',
         ),
@@ -169,6 +167,38 @@ describe('API boundary', () => {
         method: 'POST',
         body: JSON.stringify({ additionalMinutes: 30 }),
       }),
+    );
+  });
+
+  it('keeps the submitting profile for receipt recovery if the selected profile changes', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        storeProfile('admin');
+        return Promise.reject(new TypeError('Lost response'));
+      })
+      .mockResolvedValueOnce(new Response(JSON.stringify(reservation)));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(saveReservation(reservation)).resolves.toMatchObject({
+      id: reservation.id,
+    });
+
+    for (const call of fetchMock.mock.calls) {
+      const options = call[1] as RequestInit;
+      expect(new Headers(options.headers).get('X-Roomwise-Profile')).toBe(
+        defaultProfile,
+      );
+    }
+  });
+
+  it('encodes reservation identifiers when constructing feature routes', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'));
+    vi.stubGlobal('fetch', fetchMock);
+    await saveReservation(reservation, 'id/with space');
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/reservations/id%2Fwith%20space',
+      expect.objectContaining({ method: 'PUT' }),
     );
   });
 });

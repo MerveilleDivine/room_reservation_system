@@ -4,8 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using RoomReservations.Api.Application;
-using RoomReservations.Api.Infrastructure;
+using RoomReservations.Application;
+using RoomReservations.Infrastructure;
 
 namespace RoomReservations.Api.Tests;
 
@@ -33,10 +33,4 @@ internal sealed class TestApplication(int maximumDurationDays = 7) : WebApplicat
             services.AddDbContext<ReservationsDbContext>(options => options.UseInMemoryDatabase(databaseName));
         });
     }
-}
-
-internal sealed class TestClock(DateTimeOffset value) : TimeProvider
-{
-    public DateTimeOffset UtcNow { get; set; } = value;
-    public override DateTimeOffset GetUtcNow() => UtcNow;
 }

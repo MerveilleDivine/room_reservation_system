@@ -1,6 +1,9 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/RoomReservations.Api/RoomReservations.Api.csproj" />
+    <Project Path="src/RoomReservations.Domain/RoomReservations.Domain.csproj" />
+    <Project Path="src/RoomReservations.Application/RoomReservations.Application.csproj" />
+    <Project Path="src/RoomReservations.Infrastructure/RoomReservations.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/RoomReservations.Api.Tests/RoomReservations.Api.Tests.csproj" />

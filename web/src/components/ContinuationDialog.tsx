@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { ApiError } from '../api/client';
+import { ApiError } from '../shared/api/ApiError';
+import { reservationApi } from '../features/reservations/api';
 import type { ExtraTimeAvailability, Reservation } from '../api/contracts';
 import { useApi } from '../hooks/useApi';
 import { useSubmissionKey } from '../hooks/useSubmissionKey';
 import { formatDate, formatTime } from '../lib/dates';
 import { Icon } from './Icon';
+import { ModalDialog } from './ModalDialog';
 
 interface Props {
   reservation: Reservation;
@@ -17,7 +19,6 @@ interface Props {
 }
 
 export function ContinuationDialog({ reservation, onSave, onClose }: Props) {
-  const dialog = useRef<HTMLDialogElement>(null);
   const durationInput = useRef<HTMLInputElement>(null);
   const [additionalMinutes, setAdditionalMinutes] = useState(15);
   const [saving, setSaving] = useState(false);
@@ -26,7 +27,7 @@ export function ContinuationDialog({ reservation, onSave, onClose }: Props) {
   const unconfirmed = error instanceof ApiError && error.outcomeUnknown;
   const [revision, setRevision] = useState(0);
   const availability = useApi<ExtraTimeAvailability>(
-    `/reservations/${reservation.id}/extra-time`,
+    reservationApi.extraTimePath(reservation.id),
     revision,
   );
   const maximum = availability.data?.maximumMinutes ?? 0;
@@ -39,18 +40,10 @@ export function ContinuationDialog({ reservation, onSave, onClose }: Props) {
   }, [maximum, unconfirmed]);
 
   useEffect(() => {
-    const element = dialog.current;
-    element?.showModal();
-    durationInput.current?.focus();
-    return () => element?.close();
-  }, []);
-
-  useEffect(() => {
     if (!availability.loading && maximum > 0) durationInput.current?.focus();
   }, [availability.loading, maximum]);
 
   function dismiss() {
-    dialog.current?.close();
     onClose();
   }
 
@@ -78,14 +71,10 @@ export function ContinuationDialog({ reservation, onSave, onClose }: Props) {
   }
 
   return (
-    <dialog
-      ref={dialog}
-      className="booking-dialog"
-      aria-labelledby="continuation-heading"
-      onCancel={(event) => {
-        event.preventDefault();
-        if (!saving) dismiss();
-      }}
+    <ModalDialog
+      labelledBy="continuation-heading"
+      pending={saving}
+      onClose={dismiss}
     >
       <div className="dialog-heading">
         <div>
@@ -199,6 +188,6 @@ export function ContinuationDialog({ reservation, onSave, onClose }: Props) {
           </button>
         </div>
       </form>
-    </dialog>
+    </ModalDialog>
   );
 }

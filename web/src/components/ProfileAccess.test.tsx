@@ -53,7 +53,7 @@ describe('profile ownership', () => {
       screen.queryByRole('button', { name: 'Everyone' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'People' }),
+      screen.queryByRole('link', { name: 'People' }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Edit' }),

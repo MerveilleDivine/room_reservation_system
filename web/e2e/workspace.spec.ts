@@ -203,7 +203,7 @@ test('create, reload, edit and cancel a booking through the real API', async ({
   let createdId: string | undefined;
   try {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Rooms', exact: true }).click();
+    await page.getByRole('link', { name: 'Rooms', exact: true }).click();
     await expect(
       page.getByRole('heading', { name: 'Atlas', exact: true }),
     ).toBeVisible();
@@ -240,9 +240,7 @@ test('create, reload, edit and cancel a booking through the real API', async ({
       page.getByRole('heading', { name: value.title, exact: true }),
     ).toBeVisible();
     await page.reload();
-    await page
-      .getByRole('button', { name: 'Reservations', exact: true })
-      .click();
+    await page.getByRole('link', { name: 'Reservations', exact: true }).click();
     const row = page.getByRole('article').filter({
       has: page.getByRole('heading', { name: value.title, exact: true }),
     });
@@ -263,12 +261,19 @@ test('create, reload, edit and cancel a booking through the real API', async ({
       }),
     });
     await expect(updatedRow).toBeVisible();
-    page.once('dialog', (dialog) => dialog.accept());
     await updatedRow
       .getByRole('button', { name: 'Cancel', exact: true })
       .click();
+    await page
+      .getByRole('dialog', { name: 'Cancel reservation?' })
+      .getByRole('button', { name: 'Cancel reservation', exact: true })
+      .click();
     await expect(updatedRow).toHaveCount(0);
     await page.getByRole('button', { name: 'History', exact: true }).click();
+    await page.getByRole('button', { name: /^Filters/ }).click();
+    const historySlot = await localSlot(page, value);
+    await page.getByLabel('Reservations from').fill(historySlot.start);
+    await page.getByLabel('Reservations until').fill(historySlot.end);
     await expect(
       updatedRow.getByText('Cancelled', { exact: true }),
     ).toBeVisible();
@@ -339,9 +344,7 @@ test('extra time respects the next room and organizer bookings', async ({
     const roomBooking = (await roomBlock.json()) as Reservation;
     createdIds.push(roomBooking.id);
     await page.goto('/');
-    await page
-      .getByRole('button', { name: 'Reservations', exact: true })
-      .click();
+    await page.getByRole('link', { name: 'Reservations', exact: true }).click();
     await page
       .getByRole('article')
       .filter({
@@ -493,14 +496,17 @@ test('check-in and early completion release the ongoing room', async ({
   request,
 }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Reservations', exact: true }).click();
+  await page.getByRole('link', { name: 'Reservations', exact: true }).click();
   const row = page.getByRole('article').filter({
     has: page.getByRole('heading', { name: 'Engineering sync', exact: true }),
   });
   await row.getByRole('button', { name: 'Check in', exact: true }).click();
   await expect(row.getByText(/Checked in at/)).toBeVisible();
-  page.once('dialog', (dialog) => dialog.accept());
   await row.getByRole('button', { name: 'End early', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'End meeting now?' })
+    .getByRole('button', { name: 'End meeting', exact: true })
+    .click();
   await expect(row).toHaveCount(0);
   await page.getByRole('button', { name: 'History', exact: true }).click();
   await page.getByRole('button', { name: 'Filters', exact: true }).click();
@@ -543,7 +549,7 @@ test('usage report renders backend totals and filters a room', async ({
   expect(atlasUsage.scheduledMinutes).toBe(120);
   expect(atlasUsage.observedMinutes).toBe(93);
   await page.goto('/');
-  await page.getByRole('button', { name: 'Usage', exact: true }).click();
+  await page.getByRole('link', { name: 'Usage', exact: true }).click();
   const table = page.getByRole('region', { name: 'Room activity report' });
   const row = table.getByRole('row').filter({ hasText: 'Atlas' });
   await expect(row).toContainText('93 min');
@@ -575,7 +581,7 @@ test('mobile layout and booking dialog support keyboard dismissal', async ({
   await expect(
     page.getByRole('heading', { name: 'Roadmap review', exact: true }),
   ).toHaveCount(0);
-  await page.getByRole('button', { name: 'Rooms', exact: true }).click();
+  await page.getByRole('link', { name: 'Rooms', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Atlas', exact: true }),
   ).toBeVisible();
@@ -597,7 +603,7 @@ test('mobile layout and booking dialog support keyboard dismissal', async ({
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).not.toBeVisible();
   await expect(trigger).toBeFocused();
-  await page.getByRole('button', { name: 'Usage', exact: true }).click();
+  await page.getByRole('link', { name: 'Usage', exact: true }).click();
   await expect(page.getByRole('table')).toBeVisible();
   expect(
     await page.evaluate(
@@ -655,9 +661,7 @@ test('profile switching hides other bookings and preserves the selected member',
   try {
     await page.goto('/');
     await page.getByLabel('Current profile').selectOption(alex);
-    await page
-      .getByRole('button', { name: 'Reservations', exact: true })
-      .click();
+    await page.getByRole('link', { name: 'Reservations', exact: true }).click();
     const row = page.getByRole('article').filter({
       has: page.getByRole('heading', { name: value.title, exact: true }),
     });
@@ -666,7 +670,7 @@ test('profile switching hides other bookings and preserves the selected member',
       page.getByRole('button', { name: 'Everyone', exact: true }),
     ).toHaveCount(0);
     await expect(
-      page.getByRole('button', { name: 'People', exact: true }),
+      page.getByRole('link', { name: 'People', exact: true }),
     ).toHaveCount(0);
     const privateRead = await request.get(
       '/api/reservations/' + reservation.id,
@@ -697,9 +701,7 @@ test('profile switching hides other bookings and preserves the selected member',
     ).toHaveValue('Emilija Petrauskaite');
     await page.keyboard.press('Escape');
     await page.getByLabel('Current profile').selectOption('admin');
-    await page
-      .getByRole('button', { name: 'Reservations', exact: true })
-      .click();
+    await page.getByRole('link', { name: 'Reservations', exact: true }).click();
     await expect(
       row.getByRole('button', { name: 'Edit', exact: true }),
     ).toBeVisible();
@@ -806,8 +808,11 @@ test('preloaded reservations can be edited, reloaded and cancelled on mobile', a
     path: info.outputPath('seed-booking-mobile.png'),
     fullPage: true,
   });
-  page.once('dialog', (dialog) => dialog.accept());
   await updated.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'Cancel reservation?' })
+    .getByRole('button', { name: 'Cancel reservation', exact: true })
+    .click();
   await expect(updated).toHaveCount(0);
   await page.getByRole('button', { name: 'History', exact: true }).click();
   await page.getByRole('button', { name: 'Filters', exact: true }).click();
@@ -830,7 +835,7 @@ test('room search checks the selected time and carries it into the booking', asy
   const createdIds = [((await setup.json()) as Reservation).id];
   try {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Rooms', exact: true }).click();
+    await page.getByRole('link', { name: 'Rooms', exact: true }).click();
     const local = await page.evaluate(
       ({ start, end }) => {
         function input(value: string) {

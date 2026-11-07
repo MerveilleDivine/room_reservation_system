@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type {
   Person,
   Reservation,
@@ -10,13 +11,33 @@ import { ErrorNotice } from '../components/Feedback';
 import { ReservationList } from '../components/ReservationList';
 import { Icon } from '../components/Icon';
 import { useApi } from '../hooks/useApi';
+import { reservationApi } from '../features/reservations/api';
+import type { SavedBooking } from '../features/reservations/types';
 import { toUtc } from '../lib/dates';
+import { ReservationFilters } from './reservations/ReservationFilters';
+import {
+  BookingConfirmation,
+  EmptySchedule,
+  ReservationPagination,
+} from './reservations/ReservationScheduleParts';
+import {
+  reservationPageSize,
+  useReservationFilters,
+} from './reservations/useReservationFilters';
+import type { ReservationFilters as Filters } from './reservations/useReservationFilters';
 
-export interface SavedBooking {
-  reservation: Reservation;
-  label: string;
+interface Props {
+  profile: string;
+  rooms: Room[];
+  people: Person[];
+  revision: number;
+  pending: boolean;
+  saved: SavedBooking | null;
+  onDismissSaved: () => void;
+  onAction: (reservation: Reservation, action: ReservationAction) => void;
+  onBook: () => void;
+  onRefresh: () => void;
 }
-const pageSize = 6;
 
 export function ReservationsPage({
   profile,
@@ -29,114 +50,101 @@ export function ReservationsPage({
   onAction,
   onBook,
   onRefresh,
-}: {
-  profile: string;
-  rooms: Room[];
-  people: Person[];
-  revision: number;
-  pending: boolean;
-  saved: SavedBooking | null;
-  onDismissSaved: () => void;
-  onAction: (reservation: Reservation, action: ReservationAction) => void;
-  onBook: () => void;
-  onRefresh: () => void;
-}) {
-  const scope = profile === 'admin' ? 'workspace' : 'mine';
-  const [view, setView] = useState<'upcoming' | 'history'>('upcoming');
-  const [page, setPage] = useState(1);
-  const [focusId, setFocusId] = useState(saved?.reservation.id ?? null);
+}: Props) {
+  const workspace = profile === 'admin';
+  const { filters, updateFilters } = useReservationFilters();
+  const [, setSearch] = useSearchParams();
+  const [dismissedSaved, setDismissedSaved] = useState<SavedBooking | null>(
+    null,
+  );
+  const { view, page, roomId, organizerId, status, from, to } = filters;
+  const isConfirmationView =
+    view === 'upcoming' && !roomId && !organizerId && !status && !from && !to;
+  const confirmation =
+    saved !== dismissedSaved && isConfirmationView ? saved : null;
+  const focusId = confirmation?.reservation.id ?? null;
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [room, setRoom] = useState('');
-  const [organizer, setOrganizer] = useState('');
-  const [status, setStatus] = useState('');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
   const confirmationHeading = useRef<HTMLHeadingElement>(null);
   const scheduleHeading = useRef<HTMLHeadingElement>(null);
   const query = new URLSearchParams({
     view,
     page: String(focusId && saved ? 1 : page),
-    pageSize: String(pageSize),
+    pageSize: String(reservationPageSize),
   });
-  if (room) query.set('roomId', room);
+  if (roomId) query.set('roomId', roomId);
   if (focusId && saved) query.set('focusId', focusId);
-  if (scope === 'mine') query.set('organizerId', profile);
-  else if (organizer) query.set('organizerId', organizer);
+  if (!workspace) query.set('organizerId', profile);
+  else if (organizerId) query.set('organizerId', organizerId);
   if (status) query.set('status', status);
   if (from) query.set('from', toUtc(from));
   if (to) query.set('to', toUtc(to));
-  const feed = useApi<ReservationFeed>('/reservation-feed?' + query, revision);
+  const feed = useApi<ReservationFeed>(
+    reservationApi.feedPath(query),
+    revision,
+    profile,
+  );
   const totalPages = Math.max(
     1,
-    Math.ceil((feed.data?.totalCount ?? 0) / pageSize),
+    Math.ceil((feed.data?.totalCount ?? 0) / reservationPageSize),
   );
   const activeFilters = [
-    room,
-    scope === 'workspace' ? organizer : '',
+    roomId,
+    workspace ? organizerId : '',
     status,
     from,
     to,
   ].filter(Boolean).length;
+  const resolvedPage = feed.data
+    ? focusId && saved
+      ? feed.data.page
+      : Math.min(page, totalPages)
+    : page;
 
   useEffect(() => {
-    if (feed.data && focusId && saved) {
-      setPage(feed.data.page);
-    }
-  }, [feed.data, focusId, saved]);
+    if (!feed.data || resolvedPage === page) return;
+    setSearch(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        if (resolvedPage === 1) next.delete('page');
+        else next.set('page', String(resolvedPage));
+        return next;
+      },
+      { replace: true },
+    );
+  }, [feed.data, page, resolvedPage, setSearch]);
   useEffect(() => {
-    if (saved) confirmationHeading.current?.focus();
-  }, [saved]);
-  useEffect(() => {
-    if (feed.data && page > totalPages) setPage(totalPages);
-  }, [feed.data, page, totalPages]);
+    if (confirmation) confirmationHeading.current?.focus();
+  }, [confirmation]);
 
-  function changeView(next: 'upcoming' | 'history') {
-    setView(next);
-    setStatus('');
-    resetPage();
-  }
-  function resetPage() {
-    setFocusId(null);
-    setPage(1);
+  function changeFilters(patch: Partial<Filters>) {
+    setDismissedSaved(saved);
     onDismissSaved();
+    updateFilters({ ...patch, page: 1 });
   }
   function changePage(next: number) {
-    setFocusId(null);
-    setPage(next);
+    setDismissedSaved(saved);
     onDismissSaved();
+    updateFilters({ page: next });
     scheduleHeading.current?.focus();
   }
   function clearFilters() {
-    setRoom('');
-    setOrganizer('');
-    setStatus('');
-    setFrom('');
-    setTo('');
-    resetPage();
+    changeFilters({
+      roomId: '',
+      organizerId: '',
+      status: '',
+      from: '',
+      to: '',
+    });
   }
-  const items = feed.data?.items ?? [];
 
   return (
     <section aria-label="Reservation schedule">
-      {saved ? (
-        <section
-          className="booking-confirmation"
-          aria-labelledby="booking-confirmed"
-        >
-          <div className="confirmation-heading">
-            <h2 id="booking-confirmed" ref={confirmationHeading} tabIndex={-1}>
-              <Icon name="check" /> {saved.label}
-            </h2>
-            <button
-              className="icon-button"
-              aria-label="Dismiss booking confirmation"
-              onClick={onDismissSaved}
-            >
-              <Icon name="close" size={16} />
-            </button>
-          </div>
-          <p>{saved.reservation.title} is in your schedule below.</p>
-        </section>
+      {confirmation ? (
+        <BookingConfirmation
+          saved={confirmation}
+          headingRef={confirmationHeading}
+          onDismiss={onDismissSaved}
+        />
       ) : null}
       <div className="schedule-toolbar">
         <div
@@ -146,20 +154,20 @@ export function ReservationsPage({
         >
           <button
             aria-pressed={view === 'upcoming'}
-            onClick={() => changeView('upcoming')}
+            onClick={() => changeFilters({ view: 'upcoming', status: '' })}
           >
             Upcoming
           </button>
           <button
             aria-pressed={view === 'history'}
-            onClick={() => changeView('history')}
+            onClick={() => changeFilters({ view: 'history', status: '' })}
           >
             History
           </button>
         </div>
         <div className="schedule-tools">
           <span className="scope-label">
-            {profile === 'admin' ? 'All bookings' : 'My bookings'}
+            {workspace ? 'All bookings' : 'My bookings'}
           </span>
           <button
             className="button secondary filter-toggle"
@@ -180,99 +188,23 @@ export function ReservationsPage({
         </div>
       </div>
       {filtersOpen ? (
-        <div className="filter-panel" id="reservation-filters">
-          <div className="filters reservation-filters">
-            <label>
-              Room
-              <select
-                value={room}
-                onChange={(event) => {
-                  setRoom(event.target.value);
-                  resetPage();
-                }}
-              >
-                <option value="">All rooms</option>
-                {rooms.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {scope === 'workspace' ? (
-              <label>
-                Organizer
-                <select
-                  value={organizer}
-                  onChange={(event) => {
-                    setOrganizer(event.target.value);
-                    resetPage();
-                  }}
-                >
-                  <option value="">All organizers</option>
-                  {people.map((person) => (
-                    <option key={person.id} value={person.id}>
-                      {person.firstName} {person.lastName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            {view === 'history' ? (
-              <label>
-                Status
-                <select
-                  value={status}
-                  onChange={(event) => {
-                    setStatus(event.target.value);
-                    resetPage();
-                  }}
-                >
-                  <option value="">All history</option>
-                  <option>Completed</option>
-                  <option>Cancelled</option>
-                </select>
-              </label>
-            ) : null}
-            <label>
-              From
-              <input
-                aria-label="Reservations from"
-                type="datetime-local"
-                value={from}
-                onChange={(event) => {
-                  setFrom(event.target.value);
-                  resetPage();
-                }}
-              />
-            </label>
-            <label>
-              Until
-              <input
-                aria-label="Reservations until"
-                type="datetime-local"
-                value={to}
-                onChange={(event) => {
-                  setTo(event.target.value);
-                  resetPage();
-                }}
-              />
-            </label>
-          </div>
-          {activeFilters ? (
-            <button className="text-button" onClick={clearFilters}>
-              Clear filters
-            </button>
-          ) : null}
-        </div>
+        <ReservationFilters
+          filters={filters}
+          rooms={rooms}
+          people={people}
+          workspace={workspace}
+          activeCount={activeFilters}
+          onChange={changeFilters}
+          onClear={clearFilters}
+        />
       ) : null}
       <div className="schedule-heading">
         <h2 ref={scheduleHeading} tabIndex={-1}>
           {view === 'history'
             ? 'Past & cancelled'
-            : scope === 'mine'
-              ? 'Your upcoming meetings'
-              : 'Workspace schedule'}
+            : workspace
+              ? 'Workspace schedule'
+              : 'Your upcoming meetings'}
         </h2>
         {feed.data ? (
           <span>
@@ -289,70 +221,27 @@ export function ReservationsPage({
         </div>
       ) : feed.data ? (
         <>
-          {items.length ? (
+          {feed.data.items.length ? (
             <ReservationList
               profile={profile}
-              reservations={items}
+              reservations={feed.data.items}
               pending={pending}
               onAction={onAction}
             />
           ) : (
-            <div className="schedule-empty">
-              <span className="empty-icon">
-                <Icon name="calendar" size={24} />
-              </span>
-              <h3>
-                {activeFilters
-                  ? 'No meetings match those filters.'
-                  : view === 'history'
-                    ? 'No past reservations yet.'
-                    : 'A little room in your schedule.'}
-              </h3>
-              <p>
-                {activeFilters
-                  ? 'Try a different date or room.'
-                  : view === 'history'
-                    ? 'Completed and cancelled meetings will be here.'
-                    : 'Book a space when you need one.'}
-              </p>
-              {activeFilters ? (
-                <button className="button secondary" onClick={clearFilters}>
-                  Clear filters
-                </button>
-              ) : view === 'upcoming' ? (
-                <button
-                  className="button primary"
-                  onClick={onBook}
-                  disabled={!rooms.length || !people.length}
-                >
-                  <Icon name="plus" size={16} /> Book a room
-                </button>
-              ) : null}
-            </div>
+            <EmptySchedule
+              filtered={activeFilters > 0}
+              history={view === 'history'}
+              canBook={rooms.length > 0 && people.length > 0}
+              onClear={clearFilters}
+              onBook={onBook}
+            />
           )}
-          {totalPages > 1 ? (
-            <nav className="pagination" aria-label="Reservation pages">
-              <span>
-                Page {page} of {totalPages}
-              </span>
-              <div>
-                <button
-                  className="button secondary"
-                  disabled={page <= 1}
-                  onClick={() => changePage(page - 1)}
-                >
-                  Previous
-                </button>
-                <button
-                  className="button secondary"
-                  disabled={page >= totalPages}
-                  onClick={() => changePage(page + 1)}
-                >
-                  Next
-                </button>
-              </div>
-            </nav>
-          ) : null}
+          <ReservationPagination
+            page={resolvedPage}
+            totalPages={totalPages}
+            onChange={changePage}
+          />
         </>
       ) : null}
     </section>

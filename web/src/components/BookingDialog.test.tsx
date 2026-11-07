@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '../test/render';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/client';
@@ -23,9 +23,10 @@ function setupSuggestion(
   ],
   status = 200,
 ) {
-  const fetchMock = vi.fn(
-    async (_url: string) => new Response(JSON.stringify(response), { status }),
-  );
+  const fetchMock = vi.fn(async (url: string) => {
+    void url;
+    return new Response(JSON.stringify(response), { status });
+  });
   vi.stubGlobal('fetch', fetchMock);
   const save = vi.fn().mockResolvedValue(undefined);
   render(

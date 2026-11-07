@@ -1,5 +1,5 @@
-using RoomReservations.Api.Application;
-using RoomReservations.Api.Domain;
+using RoomReservations.Application;
+using RoomReservations.Domain;
 
 namespace RoomReservations.Api.Tests;
 
@@ -24,20 +24,22 @@ public sealed class UsageReportTests
     public void Late_check_in_is_observed_only_from_check_in()
     {
         var row = Row(Meeting(checkIn: -40));
-        Assert.Equal(60, row.ScheduledMinutes);
-        Assert.Equal(40, row.ObservedMinutes);
-        Assert.Equal(20, row.UnconfirmedMinutes);
-        Assert.Equal(66.7, row.ConfirmedSharePercent);
+        Assert.Multiple(
+            () => Assert.Equal(60, row.ScheduledMinutes),
+            () => Assert.Equal(40, row.ObservedMinutes),
+            () => Assert.Equal(20, row.UnconfirmedMinutes),
+            () => Assert.Equal(66.7, row.ConfirmedSharePercent));
     }
 
     [Fact]
     public void Ongoing_observation_stops_at_the_snapshot_clock()
     {
         var row = Row(Meeting(start: -30, end: 30, checkIn: -5));
-        Assert.Equal(60, row.ScheduledMinutes);
-        Assert.Equal(30, row.ElapsedReservedMinutes);
-        Assert.Equal(5, row.ObservedMinutes);
-        Assert.Equal(25, row.UnconfirmedMinutes);
+        Assert.Multiple(
+            () => Assert.Equal(60, row.ScheduledMinutes),
+            () => Assert.Equal(30, row.ElapsedReservedMinutes),
+            () => Assert.Equal(5, row.ObservedMinutes),
+            () => Assert.Equal(25, row.UnconfirmedMinutes));
     }
 
     [Fact]
@@ -45,10 +47,11 @@ public sealed class UsageReportTests
     {
         var meeting = Meeting(start: -180, end: 60, checkIn: -150, actualEnd: -30);
         var row = Assert.Single(UsageReportBuilder.Build([Room], [meeting], Now.AddHours(-2), Now, Now).Rooms);
-        Assert.Equal(120, row.ScheduledMinutes);
-        Assert.Equal(90, row.ElapsedReservedMinutes);
-        Assert.Equal(90, row.ObservedMinutes);
-        Assert.Equal(30, row.ReleasedMinutes);
+        Assert.Multiple(
+            () => Assert.Equal(120, row.ScheduledMinutes),
+            () => Assert.Equal(90, row.ElapsedReservedMinutes),
+            () => Assert.Equal(90, row.ObservedMinutes),
+            () => Assert.Equal(30, row.ReleasedMinutes));
     }
 
     [Fact]
@@ -57,61 +60,67 @@ public sealed class UsageReportTests
         var meeting = Meeting(checkIn: -50);
         meeting.Status = ReservationStatus.Cancelled;
         var row = Row(meeting);
-        Assert.Equal(0, row.ReservationCount);
-        Assert.Equal(0, row.ScheduledMinutes);
-        Assert.Equal(0, row.ObservedMinutes);
-        Assert.Null(row.ConfirmedSharePercent);
+        Assert.Multiple(
+            () => Assert.Equal(0, row.ReservationCount),
+            () => Assert.Equal(0, row.ScheduledMinutes),
+            () => Assert.Equal(0, row.ObservedMinutes),
+            () => Assert.Null(row.ConfirmedSharePercent));
     }
 
     [Fact]
     public void Unchecked_completed_bookings_are_unconfirmed()
     {
         var row = Row(Meeting());
-        Assert.Equal(1, row.UnconfirmedCompletedCount);
-        Assert.Equal(60, row.UnconfirmedMinutes);
-        Assert.Equal(0, row.ObservedMinutes);
-        Assert.Equal(0, row.ConfirmedSharePercent);
+        Assert.Multiple(
+            () => Assert.Equal(1, row.UnconfirmedCompletedCount),
+            () => Assert.Equal(60, row.UnconfirmedMinutes),
+            () => Assert.Equal(0, row.ObservedMinutes),
+            () => Assert.Equal(0, row.ConfirmedSharePercent));
     }
 
     [Fact]
     public void Future_bookings_do_not_become_elapsed_or_observed()
     {
         var row = Row(Meeting(start: 15, end: 60));
-        Assert.Equal(45, row.ScheduledMinutes);
-        Assert.Equal(0, row.ElapsedReservedMinutes);
-        Assert.Equal(0, row.UnconfirmedCompletedCount);
-        Assert.Null(row.ConfirmedSharePercent);
+        Assert.Multiple(
+            () => Assert.Equal(45, row.ScheduledMinutes),
+            () => Assert.Equal(0, row.ElapsedReservedMinutes),
+            () => Assert.Equal(0, row.UnconfirmedCompletedCount),
+            () => Assert.Null(row.ConfirmedSharePercent));
     }
 
     [Fact]
     public void Early_completion_records_time_released()
     {
         var row = Row(Meeting(checkIn: -60, actualEnd: -30));
-        Assert.Equal(60, row.ScheduledMinutes);
-        Assert.Equal(30, row.ElapsedReservedMinutes);
-        Assert.Equal(30, row.ObservedMinutes);
-        Assert.Equal(30, row.ReleasedMinutes);
-        Assert.Equal(100, row.ConfirmedSharePercent);
+        Assert.Multiple(
+            () => Assert.Equal(60, row.ScheduledMinutes),
+            () => Assert.Equal(30, row.ElapsedReservedMinutes),
+            () => Assert.Equal(30, row.ObservedMinutes),
+            () => Assert.Equal(30, row.ReleasedMinutes),
+            () => Assert.Equal(100, row.ConfirmedSharePercent));
     }
 
     [Fact]
     public void Rebooking_released_time_does_not_double_count_room_minutes()
     {
         var row = Row(Meeting(checkIn: -60, actualEnd: -30), Meeting(start: -30, checkIn: -30));
-        Assert.Equal(2, row.ReservationCount);
-        Assert.Equal(60, row.ScheduledMinutes);
-        Assert.Equal(60, row.ElapsedReservedMinutes);
-        Assert.Equal(60, row.ObservedMinutes);
-        Assert.Equal(0, row.ReleasedMinutes);
+        Assert.Multiple(
+            () => Assert.Equal(2, row.ReservationCount),
+            () => Assert.Equal(60, row.ScheduledMinutes),
+            () => Assert.Equal(60, row.ElapsedReservedMinutes),
+            () => Assert.Equal(60, row.ObservedMinutes),
+            () => Assert.Equal(0, row.ReleasedMinutes));
     }
 
     [Fact]
     public void Overlapping_observation_intervals_are_merged()
     {
         var row = Row(Meeting(start: -90, end: -20, checkIn: -80), Meeting(start: -60, end: 0, checkIn: -50));
-        Assert.Equal(90, row.ScheduledMinutes);
-        Assert.Equal(80, row.ObservedMinutes);
-        Assert.Equal(10, row.UnconfirmedMinutes);
+        Assert.Multiple(
+            () => Assert.Equal(90, row.ScheduledMinutes),
+            () => Assert.Equal(80, row.ObservedMinutes),
+            () => Assert.Equal(10, row.UnconfirmedMinutes));
     }
 
     [Fact]
@@ -126,8 +135,9 @@ public sealed class UsageReportTests
     {
         var inactive = new Room { Id = Room.Id, Name = Room.Name, Floor = "1", Capacity = 12, IsActive = false };
         var row = Assert.Single(UsageReportBuilder.Build([inactive], [Meeting()], Now.AddHours(-2), Now, Now).Rooms);
-        Assert.False(row.IsActive);
-        Assert.Equal(60, row.ScheduledMinutes);
+        Assert.Multiple(
+            () => Assert.False(row.IsActive),
+            () => Assert.Equal(60, row.ScheduledMinutes));
     }
 
     [Theory]

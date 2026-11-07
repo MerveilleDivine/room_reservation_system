@@ -1,6 +1,4 @@
-using Microsoft.Extensions.Options;
-using RoomReservations.Api.Application;
-using RoomReservations.Api.Domain;
+using RoomReservations.Domain;
 
 namespace RoomReservations.Api.Tests;
 
@@ -10,15 +8,16 @@ public sealed class BookingRulesTests
     private static readonly Guid RoomId = Guid.Parse("10000000-0000-0000-0000-000000000001");
     private static readonly Guid OrganizerId = Guid.Parse("20000000-0000-0000-0000-000000000001");
     private static Room Room => new() { Id = RoomId, Name = "Atlas", Capacity = 10, Floor = "1" };
-    private static BookingRequest Valid => new(RoomId, OrganizerId, "Planning", Now.AddDays(1), Now.AddDays(1).AddHours(1), 4);
+    private static BookingDetails Valid => new(RoomId, OrganizerId, "Planning", Now.AddDays(1), Now.AddDays(1).AddHours(1), 4);
     private static BookingRules Rules(int duration = 7, int advance = 90) =>
-        new(Options.Create(new BookingOptions { MaximumDurationDays = duration, MaximumAdvanceDays = advance }));
+        new(new BookingLimits(duration, advance));
 
-    private static void AssertCode(string code, BookingRequest request, Room? room = null, Reservation[]? existing = null)
+    private static void AssertCode(string code, BookingDetails request, Room? room = null, Reservation[]? existing = null)
     {
         var exception = Assert.Throws<BookingException>(() => Rules().Validate(request, room ?? Room, existing ?? [], Now));
-        Assert.Equal(code, exception.Code);
-        Assert.False(string.IsNullOrWhiteSpace(exception.Message));
+        Assert.Multiple(
+            () => Assert.Equal(code, exception.Code),
+            () => Assert.False(string.IsNullOrWhiteSpace(exception.Message)));
     }
 
     [Fact]
@@ -105,6 +104,24 @@ public sealed class BookingRulesTests
     }
 
     [Fact]
+    public void Room_overlap_is_a_typed_expected_conflict()
+    {
+        // Arrange
+        var existing = Existing(0, 60);
+
+        // Act
+        var exception = Assert.Throws<BookingException>(() => Rules().Validate(Valid, Room, [existing], Now));
+
+        // Assert
+        Assert.Multiple(
+            () => Assert.Equal("ROOM_OVERLAP", exception.Code),
+            () => Assert.Equal(BookingErrorKind.Conflict, exception.Kind),
+            () => Assert.Equal(exception.Code, exception.Error.Code),
+            () => Assert.Equal(exception.Message, exception.Error.Message),
+            () => Assert.Equal(BookingErrorKind.Conflict, exception.Error.Kind));
+    }
+
+    [Fact]
     public void Cancelled_reservations_do_not_block()
     {
         var existing = Existing(0, 60);
@@ -129,13 +146,29 @@ public sealed class BookingRulesTests
     }
 
     [Fact]
-    public void Limits_are_read_from_configuration()
+    public void Duration_limit_is_read_from_configuration()
     {
+        // Arrange
+        var request = Valid with { EndUtc = Valid.StartUtc.AddDays(2) };
+
+        // Act
         var exception = Assert.Throws<BookingException>(() => Rules(duration: 1).Validate(
-            Valid with { EndUtc = Valid.StartUtc.AddDays(2) }, Room, [], Now));
+            request, Room, [], Now));
+
+        // Assert
         Assert.Equal("DURATION_EXCEEDED", exception.Code);
-        exception = Assert.Throws<BookingException>(() => Rules(advance: 2).Validate(
-            Valid with { StartUtc = Now.AddDays(3), EndUtc = Now.AddDays(3).AddHours(1) }, Room, [], Now));
+    }
+
+    [Fact]
+    public void Advance_window_is_read_from_configuration()
+    {
+        // Arrange
+        var request = Valid with { StartUtc = Now.AddDays(3), EndUtc = Now.AddDays(3).AddHours(1) };
+
+        // Act
+        var exception = Assert.Throws<BookingException>(() => Rules(advance: 2).Validate(request, Room, [], Now));
+
+        // Assert
         Assert.Equal("ADVANCE_WINDOW_EXCEEDED", exception.Code);
     }
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usageApi } from '../features/usage/api';
 import type { Room, UsageReport } from '../api/contracts';
 import { ErrorNotice } from '../components/Feedback';
 import { useApi } from '../hooks/useApi';
@@ -26,7 +27,7 @@ export function UsagePage({
   );
   const [reportRevision, setReportRevision] = useState(0);
   const report = useApi<UsageReport>(
-    '/usage' + query,
+    usageApi.reportPath(query),
     revision + reportRevision,
   );
 
