@@ -28,5 +28,7 @@ ENV PORT=8080
 EXPOSE 8080
 COPY --from=api /app/ ./
 COPY --from=web /source/web/dist/ ./wwwroot/
+# A restrictive checkout umask must not make published content unreadable.
+RUN chmod -R a+rX /app
 USER $APP_UID
 ENTRYPOINT ["sh", "-c", "exec dotnet RoomReservations.Api.dll --urls http://0.0.0.0:${PORT:-8080}"]
