@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../RoomReservations.Application/RoomReservations.Application.csproj" />
+    <ProjectReference Include="../RoomReservations.Domain/RoomReservations.Domain.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.13" />
+  </ItemGroup>
+</Project>

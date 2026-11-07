@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using RoomReservations.Api.Application;
+using RoomReservations.Domain;
 
 namespace RoomReservations.Api.Api;
 
@@ -11,9 +11,15 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problems) : IExce
     {
         var (status, code, message) = exception switch
         {
-            BookingException booking => (booking.StatusCode, booking.Code, booking.Message),
-            BadHttpRequestException => (400, "INVALID_REQUEST", "Check the request fields and date formats."),
-            _ => (500, "UNEXPECTED_ERROR", "Something went wrong. Please try again.")
+            BookingException booking => (booking.Kind switch
+            {
+                BookingErrorKind.Conflict => StatusCodes.Status409Conflict,
+                BookingErrorKind.NotFound => StatusCodes.Status404NotFound,
+                BookingErrorKind.Forbidden => StatusCodes.Status403Forbidden,
+                _ => StatusCodes.Status400BadRequest
+            }, booking.Code, booking.Message),
+            BadHttpRequestException => (StatusCodes.Status400BadRequest, ApiErrorCodes.InvalidRequest, "Check the request fields and date formats."),
+            _ => (StatusCodes.Status500InternalServerError, ApiErrorCodes.UnexpectedError, "Something went wrong. Please try again.")
         };
 
         context.Response.StatusCode = status;

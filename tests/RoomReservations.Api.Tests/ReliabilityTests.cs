@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using RoomReservations.Api.Application;
+using RoomReservations.Application;
 
 namespace RoomReservations.Api.Tests;
 
