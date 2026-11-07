@@ -1,5 +1,51 @@
 # Verification record
 
+## Feedback repair — 7 November 2026
+
+Final application, tests and delivery source: `26d581439161600ba0905590280262d76ae133ed` on `refactor/reviewer-feedback`. Backend changes are in `13ae911`; frontend/CI changes are in `7a4ab59`; `1d97023` fixes non-root published-file permissions, and `26d5814` fixes stale confirmation state on Back/Forward. Subsequent documentation commits do not change that tested source.
+
+These checks were run freshly in the managed workspace. Historical CI and live-deployment results below apply only to their recorded revisions.
+
+| Check | Fresh result |
+| --- | --- |
+| Backend Release build and tests | 151 passed, 0 failed, 0 skipped; 0 warnings/errors |
+| Frontend npm run check | ESLint, TypeScript, production build, 61 unit/component tests and formatting passed |
+| Chromium with real API + Vite | 20 scenarios passed on final source (1.2 min) |
+| Clean multi-stage Docker build | Passed; fresh npm install and NuGet restore, then cached rebuild of final source |
+| Published-container Chromium | 20 scenarios passed against the final image (36.8 s) |
+| Desktop/mobile comparison | Room grid, colors, spacing and navigation compared; link alignment and initial modal focus corrected |
+| Runtime identity | Published image runs as UID 1654 |
+
+Published image: `roomwise:feedback`, ID `sha256:8e0b6a2b584fccfc129ad8a044f967f32bad737891e18c35278434a1779e7942`. It serves both React and the real API on port 8080. This is local artifact verification, not a claim that the public demo has been updated.
+
+Commands used for the verification stages:
+
+```sh
+dotnet test RoomReservations.slnx --configuration Release
+cd web
+npm ci
+npm run check
+npm run test:e2e -- --output=/tmp/roomwise-dev-final-results --reporter=list
+# After building and starting the Docker image on localhost:8080:
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:8080 npm run test:e2e -- --output=/tmp/roomwise-container-final-results --reporter=list
+```
+
+The workspace needed a local .NET 10 SDK and Chromium installation. The managed command sandbox required escalation for the test runner's local sockets, browser launch, Docker daemon and dependency downloads. Build-time proxy certificate mounts were temporary; see [hosting.md](hosting.md).
+
+The backend tests retain all original rules and add enforceable project boundaries, required profile contexts, room/organizer concurrency, gate release after cancellation/failure, recovery waiting for an in-flight write, typed expected failures, API JSON 404s and unchanged 405/Allow behavior. HTTP DTO names, enum/flags values and receipt fingerprints remain compatible.
+
+Frontend tests pin error classification, cancellation, write/receipt profile capture, stable submission identity, absence of automatic write retries, delayed old-profile suppression, profile-specific invalidation and explicit same-input searches. Browser checks cover seeded/new create/read/reload/edit/cancel, suggestions, exact extra time, check-in/early end, lost real write responses with one reservation, mobile keyboard/overflow, direct routes, history and shareable filters, member redirects, API/assets 404s, and pending confirmation controls.
+
+Verification caught and corrected initial modal focus, mobile navigation alignment, duplicate schedule refreshes, form unmounting during refetch, API fallback handling of unsupported methods, and stale saved-booking focus when Back restores History. A frontend run under simultaneous Docker/browser load timed out in an existing availability wait; a repeat with unchanged timeouts passed all 60 tests. Parallel browser runs initially collided while saving traces to the same default output directory (teardown ENOENT, not assertion failures). Final runs used separate artifact directories and list reporters; both passed. No check was removed or weakened.
+
+The first managed Docker build failed cloning a post-restore layer. Disabling persistent MSBuild/diagnostic servers allowed the build to finish. Runtime verification then exposed unreadable content from the workspace's restrictive checkout umask; the final image normalizes read/traverse permissions while retaining the non-root user. The successful container checks above use that corrected image.
+
+`npm audit` reports 10 moderate advisories propagated from `minimatch@10.2.6` in ESLint/TypeScript-parser development dependencies, with no high/critical advisories. `npm ls minimatch` shows only those tooling chains. No forced major override or broad downgrade was applied to hide this warning. Keep this development-tool limitation visible when dependencies are next reviewed.
+
+See [feedback-remediation.md](feedback-remediation.md) for all finding dispositions and the milestone walkthrough. Synthetic demo identities, one process and reset-on-restart InMemory storage remain explicit limits.
+
+The CI workflow includes the same backend, frontend, development-browser and container checks. No new hosted CI run or live deployment was triggered from this workspace.
+
 ## Smaller-room suggestions
 
 [Checks run 40676774036](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/40676774036) passed for application and test source `2743feb48c37af4d75e858087ca893b8c480ecd3` on 28 October 2026:

@@ -2,17 +2,20 @@
 
 ## Boundaries
 
-The React app sends JSON to the ASP.NET API through Vite's local `/api` proxy. Endpoints delegate mutation work to `ReservationService`. The service loads the room and organizer, obtains the current UTC time, invokes `BookingRules`, writes through EF Core, and returns a DTO. `ApiExceptionHandler` translates failures into a consistent HTTP response.
+RoomWise is one deployed ASP.NET process serving React assets and the API, with four backend assemblies:
 
-Dependency direction is explicit:
+| Project | Responsibility | Allowed project references |
+| --- | --- | --- |
+| Domain | Entities, booking policy and typed business errors | None |
+| Application | Use cases, DTOs, profile policy and storage/gate abstractions | Domain |
+| Infrastructure | EF Core InMemory, seeding, materialized stores and process-wide write gate | Application, Domain |
+| API | HTTP binding, profile-header extraction, feature endpoints, error mapping and composition | Application; Infrastructure for composition |
 
-- Domain entities have no HTTP or EF dependency.
-- `BookingRules` uses domain data and configured limits, not the database or browser.
-- The application service orchestrates persistence and policy checks.
-- Infrastructure owns EF Core and demo seed data.
-- React owns presentation, form entry and request state. The API supplies status, allowed actions, active counts and policy values.
+Application and Domain have no EF Core or ASP.NET dependency. Stores return materialized data rather than exposing EF or `IQueryable`. The EF context and store are scoped; only the gate and clock are singleton. Architecture tests enforce the dependency direction.
 
-These are folders within one API project, not separate deployable services. Extracting assemblies is unnecessary for the current size.
+HTTP handlers bind input, call a use case and return a response. Feature modules cover reservations, rooms, people, reporting and system policy. Minimal APIs remain the deliberate equivalent of small feature controllers; adding MVC would not improve these boundaries.
+
+React uses feature API modules over a configured Axios transport and TanStack Query for server data. Local hooks own form input and dialog transitions. React Router owns navigation and shareable reservation filters. The API supplies status, allowed actions, active counts and policy values.
 
 ## ADR 1: use the required InMemory provider, acknowledge its limits
 
@@ -53,13 +56,17 @@ Reference: [Microsoft EF Core InMemory guidance](https://learn.microsoft.com/en-
 
 The usage report labels scheduled, reported and unconfirmed minutes separately. Existing JSON metric names remain compatible. An elapsed booking carries a completion note explaining that actual departure is not recorded. Its interval-union calculations run in the backend and avoid double-counting an early-released slot that was booked again. The report snapshot uses the booking gate and one injected clock reading. See [usage-report.md](usage-report.md).
 
-## ADR 5: modest frontend state
+## ADR 5: separate server, URL and local UI state
 
-**Decision:** React local state and a small abortable resource hook are sufficient. Page-specific filters stay in their own page components. Shared room/user data is loaded once per refresh; independent requests start concurrently. Requests are cancelled on unmount or query changes so stale responses do not overwrite newer queries.
+**Decision:** TanStack Query owns server data; React Router owns navigation and reservation filter/page search parameters; local form controllers own input. One discriminated dialog state prevents contradictory booking, continuation and confirmation dialogs.
 
-**Tradeoff:** no persistent client cache or router yet. Reloading returns to the personal upcoming schedule. A query library or router would become useful for persistent caching, deep links or more complex navigation.
+Query identity includes the selected demo profile and request filters. Switching profile cancels and removes old-profile queries, clears dialogs and notices, and returns to reservations. Superseded request results cannot populate the new profile's view. No query data is persisted to browser storage.
 
-**Refresh:** mutation success reloads API-derived state, and the Refresh workspace button reloads the current view on demand. There is no periodic API polling: an unattended demo tab must not generate background traffic. Displayed statuses and allowed actions describe the last response. Backend checks remain authoritative if a button's availability changes between refresh and click.
+Retries, polling, refocus and reconnect fetching are disabled explicitly. Reads refresh on mount, explicit Refresh/search actions and mutation invalidation. Searching the same availability interval again still requests a new snapshot. Availability remains advisory: every save revalidates on the backend.
+
+Routes are `/reservations`, `/rooms`, `/people` and `/usage`; `/` redirects to reservations. People and Usage are administrator views. ASP.NET serves the application shell for frontend routes while retaining API 404s and ordinary static-asset behavior.
+
+Axios defaults to the same-origin `/api` prefix, with `VITE_API_BASE_URL` as a build-time override. Request cancellation and Problem Details normalization live at the transport boundary. The submitting profile is captured for both a write and its receipt lookup. Writes are never automatically retried.
 
 ## ADR 6: predictable failures
 
@@ -90,7 +97,7 @@ Room and organizer conflicts are checked at save under the existing gate. One no
 
 A booking and its optional `BookingSubmission` receipt are staged in the same EF context and saved together while holding the booking gate. SHA-256 fingerprints use a normalized command payload including operation and target. Receipt replay happens before time-sensitive policy checks, so an acknowledged booking is recoverable after its start or after subsequent edits. Replaying an old edit returns current state without overwriting newer changes. Failed validation never consumes a key.
 
-The API boundary parses the HTTP header; the application service owns receipt matching and write orchestration. React's API client owns transport failure classification and the one recovery lookup. A small submission-key hook preserves identity across form retries; dialogs retain uncertain input rather than starting a different operation. No global state library, extra infrastructure service or alternate backend is introduced.
+The API boundary parses the HTTP header; the application service owns receipt matching and write orchestration. The shared Axios transport owns failure classification; the reservations feature API owns the recovery lookup. A small submission-key hook preserves identity across form retries; dialogs retain uncertain input rather than starting a different operation. TanStack Query owns the surrounding server state; recovery remains an explicit operation rather than an automatic mutation retry.
 
 The guarantee is limited to one in-memory server lifetime. Restart, scale-down or a second instance can lose or miss receipts. This is a recoverable demo workflow, not a claim of globally exactly-once delivery. A production database would need a unique request key, durable receipt retention and a transactional booking/concurrency strategy.
 
@@ -100,7 +107,7 @@ The browser recovery test forwards a POST to the actual ASP.NET API, lets it com
 
 A small header selector switches between the seeded people and Administrator. Members can read, create and manage only their own reservations. Administrator can manage every organizer. The selected profile is stored per tab in session storage, with an in-memory fallback if storage is unavailable.
 
-The browser includes `X-Roomwise-Profile` on API requests. `BookingProfile` checks the selected person against the existing in-memory people, while `ReservationService` checks ownership under its write gate. Edits check both the existing owner and requested organizer, preventing reassignment as a workaround. Request recovery and replay check the reservation's current owner. Missing or invalid profiles cannot read private booking details or make changes. Reservation list, feed and detail endpoints enforce the selected member. Usage and aggregate booking counts are limited to Administrator.
+The browser includes `X-Roomwise-Profile` on API requests. `HttpDemoProfile` extracts the selection and the application `BookingProfile` checks the person against the existing in-memory people, while `ReservationService` checks ownership under its write gate. Edits check both the existing owner and requested organizer, preventing reassignment as a workaround. Request recovery and replay check the reservation's current owner. Missing or invalid profiles cannot read private booking details or make changes. Reservation list, feed and detail endpoints enforce the selected member. Usage and aggregate booking counts are limited to Administrator.
 
 These are deliberately selectable sample profiles, not authenticated accounts. The header is user-controlled; production authorization would require a verified identity and trusted role assignments. Those distinctions belong in the engineering documentation rather than repeated notices in the interface.
 
@@ -110,7 +117,7 @@ React derives action visibility from the selected profile and the API's lifecycl
 
 The personal upcoming schedule is the application entry point. `ReservationFeedService` provides explicit upcoming/history views, stable sorting, organizer/room/status/date filtering and bounded pagination in one read snapshot. The existing unpaginated reservations endpoint keeps its array contract for integrations and tests. Upcoming includes ongoing Booked reservations; naturally completed and cancelled records appear only in History.
 
-A successful mutation returns the committed DTO for a short confirmation above the feed. The booking stays in the canonical chronological list; `focusId` resolves its actual page instead of removing the row or creating a separate editable copy. Saving resets irrelevant filters; switching profiles, pages or filters clears confirmation state. The API hook cancels superseded requests and hides data belonging to an old query while a new one loads.
+A successful mutation returns the committed DTO for a short confirmation above the feed. The booking stays in the canonical chronological list; `focusId` resolves its actual page instead of removing the row or creating a separate editable copy. Saving resets irrelevant filters; switching profiles, pages or filters clears confirmation state. The query hook cancels superseded requests and hides data belonging to an old query while a new one loads.
 
 `RoomAvailabilityService` evaluates a chosen interval against the same time and overlap policies as booking writes. The room finder carries its checked room and interval into the form. Every search, including unchanged dates, requests a fresh snapshot. Changing draft dates disables booking until searched. An unavailable lookup is not shown as proof that a room is booked. The write gate still revalidates conflicts when the booking is saved.
 
@@ -120,4 +127,16 @@ See [product-design.md](product-design.md) for the researched workflows, informa
 
 The existing availability service reuses booking rules to suggest at most one smaller active room for the complete interval and attendee count. It preserves explicit equipment requirements, prefers similar equipment, then smaller capacity and the same floor. Differences from the selected room are returned separately so the user can make an informed choice. An edit can exclude its existing booking only after an ownership check. No reservation details or other organizers are returned.
 
-React waits 250 ms after changes to the relevant fields, cancels obsolete lookups and immediately hides a suggestion belonging to an older selection. Choosing a suggestion changes only the room; ignoring it keeps the original choice. A failed optional lookup does not block normal booking. Suggestions neither hold nor create reservations, and saving rechecks conflicts under the existing write gate. This adds no polling, state-management dependency or infrastructure service.
+React waits 250 ms after changes to the relevant fields, cancels obsolete lookups and immediately hides a suggestion belonging to an older selection. Choosing a suggestion changes only the room; ignoring it keeps the original choice. A failed optional lookup does not block normal booking. Suggestions neither hold nor create reservations, and saving rechecks conflicts under the existing write gate. This adds no polling or infrastructure service.
+
+## ADR 14: feedback remediation and styling
+
+The application interfaces express real storage, current-profile and concurrency seams. A generic repository or extra Strategy/Factory hierarchy would duplicate existing responsibilities. Expected failures have stable typed classifications; the API maps those classifications to HTTP status codes and Problem Details.
+
+Meaningful public types have their own files. Pure mapping helpers, policy functions and endpoint/DI extensions remain static where stateful injection would add no value. Component props used by one component remain local; shared API contracts and feature types have dedicated modules.
+
+ESLint checks TypeScript and React Hooks in CI through `npm run check`. TypeScript is pinned to 6.0.3 because the selected TypeScript ESLint parser supports versions below 6.1; no unsupported peer override is used. Existing runtime dependencies are retained.
+
+Tailwind utilities provide shared control/layout conventions without changing the visual design. Preflight is omitted to preserve the existing reset, typography and native controls. Migration starts with the shared button and header actions; remaining CSS stays until a useful replacement is made. Confirmation dialogs share the app's native modal behavior, pending controls and focus restoration.
+
+See [feedback-remediation.md](feedback-remediation.md) for the finding-to-evidence checklist and milestone walkthrough.

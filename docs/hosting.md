@@ -40,3 +40,9 @@ Selectable profiles demonstrate the requested member/admin workflows without acc
 The old Vercel URL forwards to the Render app using `vercel.json` and the static `legacy-redirect` page. It no longer runs the ASP.NET backend. The root Dockerfile continues to serve the real app on Render and locally.
 
 References: [Render free-service limits](https://render.com/docs/free), [scaling](https://render.com/docs/scaling), and [Blueprint fields](https://render.com/docs/blueprint-spec).
+
+## Building behind a managed HTTPS proxy
+
+Ordinary Docker builds use the normal public certificate authorities. For an environment that adds its own trusted HTTPS proxy, the Dockerfile accepts optional BuildKit secrets `proxy_ca` (Node's additional CA) and `ca_bundle` (the combined system CA bundle for .NET restore). Mount them with `docker build --secret id=proxy_ca,src=... --secret id=ca_bundle,src=... .`. They are used only in dependency-install steps and are not copied into the published image. TLS verification stays enabled.
+
+The SDK build stage disables persistent MSBuild and diagnostic servers so temporary communication sockets do not remain in build layers. The final stage also normalizes published file read/traverse permissions so restrictive checkout permissions cannot prevent the non-root runtime from reading configuration or static assets. The final image is still the ASP.NET runtime serving one in-memory application instance.
