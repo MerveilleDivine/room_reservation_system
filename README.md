@@ -6,6 +6,8 @@ I paid particular attention to the awkward cases: a meeting running over, two pe
 
 **[Open the live demo](https://roomwise-reservations.onrender.com/)** · [How it works](#how-it-works) · [Run locally](#run-locally) · [Architecture](docs/architecture.md)
 
+![Roomwise reservations dashboard, showing a member's upcoming meeting](docs/screenshots/roomwise-dashboard.jpg)
+
 Built with **ASP.NET Core, Entity Framework Core InMemory, React and TypeScript**. The hosted demo uses sample profiles and in-memory data, which resets when its single server process restarts.
 
 The public demo runs an earlier verified release. The current source includes a later feedback-based refactor; [verification results](docs/verification.md) and the [repair walkthrough](docs/feedback-remediation.md) document the differences.
