@@ -1,16 +1,14 @@
 # Roomwise
 
-**Find a room. Make a plan. Keep everyone’s time clear.**
+I built Roomwise to make meeting-room booking a little less complicated. You can find an available room, choose one that fits your group, and manage a reservation if your plans change.
 
-Roomwise is a meeting-room reservation app. Find a space that fits your group, check that it is free for the whole meeting, and manage your booking as plans change. If you finish early, release the room. If you need longer, see how much extra time is available.
+I paid particular attention to the awkward cases: a meeting running over, two people booking the same room, or a small group taking a space meant for twelve. The backend handles availability and booking rules; the React interface keeps those decisions understandable.
 
-I kept coming back to the human part: what if the meeting runs over, someone has booked straight after us, or six people are about to take a room for twelve? Those are the details I wanted Roomwise to handle properly.
+**[Open the live demo](https://roomwise-reservations.onrender.com/)** · [How it works](#how-it-works) · [Run locally](#run-locally) · [Architecture](docs/architecture.md)
 
-Built for an internship technical assignment with **ASP.NET Core, Entity Framework Core InMemory, React and TypeScript**. Booking rules and calculations run in the backend; React handles the interface.
+Built with **ASP.NET Core, Entity Framework Core InMemory, React and TypeScript**. The hosted demo uses sample profiles and in-memory data, which resets when its single server process restarts.
 
-**[Open Roomwise](https://roomwise-reservations.onrender.com/)** · [Run locally](#run-locally) · [How it works](#how-it-works) · [Architecture](docs/architecture.md)
-
-This branch contains the feedback refactor described in the [repair walkthrough](docs/feedback-remediation.md). Its local verification is recorded separately from the earlier public-demo release in [verification.md](docs/verification.md).
+The public demo runs an earlier verified release. The current source includes a later feedback-based refactor; [verification results](docs/verification.md) and the [repair walkthrough](docs/feedback-remediation.md) document the differences.
 
 ## Try it out
 
