@@ -10,7 +10,7 @@ I paid particular attention to the awkward cases: a meeting running over, two pe
 
 Built with **ASP.NET Core, Entity Framework Core InMemory, React and TypeScript**. The hosted demo uses sample profiles and in-memory data, which resets when its single server process restarts.
 
-The public demo runs an earlier verified release. The current source includes a later feedback-based refactor; [verification results](docs/verification.md) and the [repair walkthrough](docs/feedback-remediation.md) document the differences.
+The live demo now includes the booking and reliability refactor. The [verification record](docs/verification.md) covers the tested application, and the [repair walkthrough](docs/feedback-remediation.md) explains the changes.
 
 ## Try it out
 

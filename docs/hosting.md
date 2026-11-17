@@ -19,7 +19,9 @@ Open `http://localhost:8080`. Create, refresh, edit and cancel a booking. The re
 
 ## Hosted release
 
-The [live app](https://roomwise-reservations.onrender.com/) is service `srv-dbgst9dg1s2s73c8col0` in the approved `My Workspace`, using the free Frankfurt compute plan with one instance. It was created directly through Render's connector. The deployed source is `7b2066d4cac6ffa3d17ec86c9ec42fa7082891f5`, from `fix/hosted-booking-reliability`. Auto-deploy is off so repository documentation updates do not reset the demo. The initial service uses Render's default TCP readiness check; `/api/health` was separately verified to return 200. The reusable Blueprint additionally specifies HTTP health checks.
+The [live app](https://roomwise-reservations.onrender.com/) runs as Render service `srv-dbgst9dg1s2s73c8col0` in `My Workspace`, on a single free Frankfurt instance. The current application was deployed on **17 November 2026** from commit `e55106f9cb9c01c5baa4e53228d070bc761ed381` (deploy `dep-dbu3ct88v5cc73bqho1g`). The production homepage and `/api/health` returned 200 after deployment; see the [verification record](verification.md) for read-only live checks.
+
+The existing Render service is still configured to build from `fix/hosted-booking-reliability`, which was safely fast-forwarded to that `main` commit before this deployment. Auto-deploy remains **off** so documentation commits do not restart the in-memory demo. For a future release, either change the Render service branch to `main` in its dashboard or explicitly synchronize the configured release branch with a tested `main` revision before triggering a manual deploy. The reusable `render.yaml` Blueprint still reflects the existing release-branch configuration; its health-check setting uses `/api/health`.
 
 For future releases, deploy an explicitly tested revision from the configured branch. Preserve the single-instance limit. The acceptance checks are:
 

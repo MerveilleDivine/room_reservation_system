@@ -1,5 +1,24 @@
 # Verification record
 
+## Hosted release — 17 November 2026
+
+The current [Roomwise application](https://roomwise-reservations.onrender.com/) was deployed to Render as `dep-dbu3ct88v5cc73bqho1g`, with status **live** and source `e55106f9cb9c01c5baa4e53228d070bc761ed381`. The application code matches the November 7 refactor; subsequent commits before deployment changed documentation and screenshots only.
+
+The [GitHub Actions run for the deployed commit](https://github.com/MerveilleDivine/room_reservation_system/actions/runs/44068854485) completed successfully. Render rebuilt and published the frontend and .NET Docker image successfully.
+
+Read-only live checks after deployment:
+
+| Check | Observed |
+| --- | --- |
+| Homepage, health, room list, booking policy | 200 |
+| Administrator reservation feed | 200, three sample entries |
+| Member reservation feed | 200, scoped to the member |
+| Reservation feed without a profile | 400 (`PROFILE_REQUIRED`) |
+| Another member's reservation detail | 403 (`BOOKING_ACCESS_DENIED`) |
+| Room availability | 200, four room records |
+
+These are **hosted smoke checks**, not a replacement for the broader isolated browser and concurrency tests recorded below. No booking writes were made against the public demo during this release check. The service runs one in-memory instance, so demo bookings and request receipts reset after process replacement or idle shutdown.
+
 ## Feedback repair — 7 November 2026
 
 Final application, tests and delivery source: `26d581439161600ba0905590280262d76ae133ed` on `refactor/reviewer-feedback`. Backend changes are in `13ae911`; frontend/CI changes are in `7a4ab59`; `1d97023` fixes non-root published-file permissions, and `26d5814` fixes stale confirmation state on Back/Forward. Subsequent documentation commits do not change that tested source.
